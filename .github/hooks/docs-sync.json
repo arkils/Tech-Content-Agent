@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python scripts/hooks/session_start.py",
+        "windows": "python scripts\\hooks\\session_start.py",
+        "timeout": 10
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "python scripts/hooks/docs_sync.py",
+        "windows": "python scripts\\hooks\\docs_sync.py",
+        "timeout": 10
+      }
+    ]
+  }
+}

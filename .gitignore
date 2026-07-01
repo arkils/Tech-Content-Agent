@@ -1,0 +1,100 @@
+# =============================================================================
+# tech-news-agent .gitignore
+# =============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+MANIFEST
+
+# --- Virtual environments ---
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Secrets & credentials (NEVER commit these) ---
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+credentials
+aws-credentials
+secrets.json
+secrets.yaml
+secrets.yml
+
+# --- AWS CDK ---
+cdk.out/
+cdk.context.json
+.cdk.staging/
+
+# --- pytest ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# --- Ruff / Black / linters ---
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
+*.out
+
+# --- Node (CDK toolchain) ---
+node_modules/
+package-lock.json
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- BlogPublisher output ---
+# Generated Markdown posts — do not commit unless using this repo as a blog source
+output/
+
+# --- LocalStack (offline AWS dev) ---
+.localstack/
+localstack_persistence/
+volume/
+
+# --- OS ---
+.DS_Store
+ehthumbs.db
+Desktop.ini

@@ -1,0 +1,45 @@
+# Continuous Integration
+#
+# TODO: Implement this workflow once the project has runnable tests and linting.
+#
+# Planned steps:
+#   1. Checkout code
+#   2. Set up Python 3.13
+#   3. Install dev dependencies
+#   4. Run Ruff (lint)
+#   5. Run Black (format check)
+#   6. Run pytest with coverage
+#   7. Upload coverage report to Codecov (optional)
+#
+# IMPORTANT: This workflow must never use or expose AWS credentials.
+# Use GitHub OIDC + IAM role assumption for any AWS calls.
+
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  # TODO: implement lint job
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO: add ruff and black steps
+
+  # TODO: implement test job
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO: add pytest steps

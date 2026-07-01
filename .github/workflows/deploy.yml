@@ -1,0 +1,51 @@
+# CDK Deployment
+#
+# TODO: Implement this workflow once CDK stacks are defined and tested.
+#
+# Planned steps:
+#   1. Checkout code
+#   2. Set up Python 3.13
+#   3. Set up Node.js (for CDK CLI)
+#   4. Install CDK CLI
+#   5. Install Python dependencies
+#   6. Assume IAM role via GitHub OIDC (no static credentials)
+#   7. Run cdk synth (validation)
+#   8. Run cdk deploy --all (on merge to main only)
+#
+# IMPORTANT: Never store AWS credentials as GitHub Secrets.
+# Use GitHub Actions OIDC provider + IAM role assumption.
+# See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html
+
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+# Require explicit permissions — deny by default
+permissions:
+  id-token: write   # Required for OIDC token exchange
+  contents: read
+
+jobs:
+  # TODO: implement synth job (runs on every push to validate CDK output)
+  synth:
+    name: CDK Synth
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO: add CDK synth steps
+
+  # TODO: implement deploy job (runs on merge to main, requires synth to pass)
+  deploy:
+    name: CDK Deploy
+    runs-on: ubuntu-latest
+    needs: synth
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO: add CDK deploy steps with OIDC role assumption

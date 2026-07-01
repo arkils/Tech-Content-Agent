@@ -1,0 +1,14 @@
+{
+  "app": "python infrastructure/app.py",
+  "watch": {
+    "include": ["infrastructure/**"],
+    "exclude": ["cdk.out/**", "**/__pycache__/**"]
+  },
+  "context": {
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
+    "@aws-cdk/core:checkSecretUsage": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/aws-iam:importedRoleStackSafeDefaultPolicyName": true,
+    "@aws-cdk/core:enablePartitionLiterals": true
+  }
+}
