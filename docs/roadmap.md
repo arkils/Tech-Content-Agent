@@ -20,14 +20,16 @@
 - [x] Full deployment documentation with secrets setup (`docs/deployment.md`)
 - [x] Full development guide (`docs/development.md`)
 
-## Phase 2 — Agent tools & pipeline (next)
+## Phase 2 — Agent tools & pipeline (in progress)
 
-- [ ] `fetch_tech_news` tool — RSS / News API ingestion
-- [ ] `check_duplicate` tool — DynamoDB article URL deduplication
-- [ ] `summarise_articles` tool — Amazon Bedrock batch summarisation
-- [ ] `generate_post` tool — per-platform Bedrock post generation using platform prompts
-- [ ] `news_pipeline` workflow — wire all tools into an end-to-end pipeline
-- [ ] Unit test coverage ≥ 80 %
+- [x] `AgentConfig` extended — `news_feeds_table`, `news_feed_urls`, `max_articles_per_run`
+- [x] Data models — `FeedSource`, `Article`, `ArticleSummary`, `ContentPackage`, `PublishResult` in `agent/models/`
+- [x] `fetch_tech_news` tool — RSS / News API ingestion (DynamoDB feed registry + env var fallback)
+- [x] `check_duplicate` tool — DynamoDB article URL deduplication + `mark_seen` write-back with TTL
+- [x] `summarise_articles` tool — Amazon Bedrock batch summarisation with duplicate-coverage detection
+- [x] `generate_post` tool — LinkedIn post generation via Bedrock; other platforms deferred to Phase 4
+- [x] `news_pipeline` workflow — full end-to-end orchestration with early-exit, publisher isolation, and second-run dedup
+- [x] Unit test coverage — 168 tests passing
 
 ## Phase 3 — Infrastructure
 

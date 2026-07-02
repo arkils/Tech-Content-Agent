@@ -14,6 +14,9 @@ To add a new platform:
   4. Add a Secrets Manager entry for any required credentials.
   5. Add a platform prompt in ``agent/prompts/platforms/``.
 
+Data contracts (``ArticleSummary``, ``ContentPackage``, ``PublishResult``) are
+defined in ``agent/models`` and re-exported here for backwards compatibility.
+
 TODO:
     - Add retry logic with exponential back-off to ``run()``.
     - Emit CloudWatch metrics per publisher on success / failure.
@@ -24,75 +27,13 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+
+from agent.models import ArticleSummary, ContentPackage, PublishResult
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Data contracts shared between the pipeline and all publishers
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ArticleSummary:
-    """A single article after Bedrock summarisation."""
-
-    title: str
-    url: str
-    summary: str
-    relevance_score: int  # 1–5
-    source: str = ""
-
-
-@dataclass
-class ContentPackage:
-    """
-    Platform-agnostic content produced by the pipeline.
-
-    The pipeline builds one ``ContentPackage`` per run and passes it to
-    every enabled publisher.  Each publisher formats it independently for
-    its target platform.
-
-    Attributes:
-        topic:      Short headline capturing the day's dominant tech theme.
-        digest:     2–3 sentence overall digest for the entire batch.
-        articles:   Individual article summaries with relevance scores.
-        keywords:   Extracted tech keywords / topics for hashtags / tags.
-        raw_post:   Pre-generated post text from Bedrock (may be refined
-                    by each publisher's own prompt).
-    """
-
-    topic: str
-    digest: str
-    articles: list[ArticleSummary] = field(default_factory=list)
-    keywords: list[str] = field(default_factory=list)
-    raw_post: str = ""
-
-
-@dataclass
-class PublishResult:
-    """
-    Result returned by a publisher after attempting to deliver content.
-
-    Attributes:
-        platform:   String key identifying the publisher (e.g. ``"linkedin"``).
-        success:    ``True`` if the content was delivered without error.
-        post_id:    Platform-assigned ID for the published post, if available.
-        url:        Public URL of the published post, if available.
-        error:      Human-readable error message on failure.
-    """
-
-    platform: str
-    success: bool
-    post_id: str | None = None
-    url: str | None = None
-    error: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Abstract base
-# ---------------------------------------------------------------------------
+# Re-export so existing imports of these names from this module keep working.
+__all__ = ["ArticleSummary", "ContentPackage", "PublishResult", "BasePublisher"]
 
 
 class BasePublisher(ABC):

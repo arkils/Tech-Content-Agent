@@ -8,10 +8,21 @@ All non-sensitive configuration is read from environment variables in `agent/con
 |----------|---------|-------------|
 | `AWS_REGION` | `us-east-1` | AWS region for all SDK calls |
 | `BEDROCK_MODEL_ID` | `anthropic.claude-3-5-sonnet-20241022-v2:0` | Bedrock model for summarisation and post generation |
-| `DYNAMODB_TABLE_NAME` | `tech-news-agent-articles` | DynamoDB table tracking processed article URLs |
+| `DYNAMODB_TABLE_NAME` | `tech-news-agent-articles` | DynamoDB table tracking processed article URLs (dedup) |
+| `NEWS_FEEDS_TABLE` | `tech-news-agent-feeds` | DynamoDB table for the managed RSS feed registry |
+| `NEWS_FEED_URLS` | *(5 hardcoded defaults)* | Comma-separated fallback RSS URLs when DynamoDB feed table is empty |
+| `MAX_ARTICLES_PER_RUN` | `20` | Max articles to process per run (Bedrock cost cap) |
+| `ARTICLE_TTL_DAYS` | `90` | Days before processed article records expire in DynamoDB |
 | `LOG_LEVEL` | `INFO` | Python logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `ENABLED_PUBLISHERS` | `blog` | Comma-separated platform keys to publish to |
 | `BLOG_OUTPUT_PATH` | `output/posts` | Directory where BlogPublisher writes Markdown files |
+
+Default RSS feed sources (used when `NEWS_FEED_URLS` is unset and DynamoDB is empty):
+- Ars Technica Technology Lab
+- The Verge
+- TechCrunch
+- AWS Blog
+- Hacker News
 
 Example:
 ```bash
@@ -19,6 +30,9 @@ export AWS_REGION=us-east-1
 export ENABLED_PUBLISHERS=blog,linkedin
 export BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 export DYNAMODB_TABLE_NAME=tech-news-agent-articles
+export NEWS_FEEDS_TABLE=tech-news-agent-feeds
+export MAX_ARTICLES_PER_RUN=20
+export ARTICLE_TTL_DAYS=90
 export LOG_LEVEL=DEBUG
 export BLOG_OUTPUT_PATH=output/posts
 ```

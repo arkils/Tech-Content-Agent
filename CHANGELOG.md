@@ -10,11 +10,103 @@ This project uses [semantic versioning](https://semver.org/) — pre-1.0 while i
 ## [Unreleased]
 
 ### Planned next
-- `fetch_tech_news` tool — RSS / News API ingestion
-- `check_duplicate` tool — DynamoDB deduplication
-- `summarise_articles` tool — Amazon Bedrock batch summarisation
-- `news_pipeline` workflow — end-to-end pipeline wiring
-- CDK stack implementations
+- CDK stack implementations (Phase 3)
+
+---
+
+## [0.9.0] — 2026-07-02
+
+### Added
+- **`agent/workflows/news_pipeline.py`** — `NewsPipeline` end-to-end orchestration:
+  - Step 1: fetch articles via `NewsFetcher`
+  - Step 2: filter with `ArticleDeduplicator.filter_new()`
+  - Step 3: summarise via `ArticleSummariser` (Bedrock)
+  - Step 4: generate LinkedIn post via `PostGenerator` (Bedrock)
+  - Step 5: fan-out to all enabled publishers
+  - Step 6: record processed URLs via `ArticleDeduplicator.mark_seen()`
+  - Early-exit with `PipelineResult.skipped` when no new articles or no summaries
+  - Publisher failures isolated — one failed publisher never blocks others
+- **`tests/test_news_pipeline.py`** — 13 integration-style tests covering happy-path, both early-exit conditions, publisher failure resilience, and second-run deduplication
+- **`agent/main.py`** — fully implemented `handler()` entry point; creates boto3 clients and runs `NewsPipeline`; returns structured stats dict
+- **`tests/test_agent.py`** — replaced `NotImplementedError` placeholder test with 5 tests covering response shape and status values
+
+---
+
+## [0.8.0] — 2026-07-02
+
+### Added
+- **`agent/tools/post_generator.py`** — `PostGenerator` tool (LinkedIn only for Phase 2):
+  - Loads the platform-specific Bedrock prompt template from `agent/prompts/platforms/`
+  - Extracts the prompt text from markdown code fences automatically
+  - Derives `topic` (highest-relevance article title), `keywords` (from titles), and `digest` (first sentence of top article)
+  - Calls Bedrock `converse` and returns a fully populated `ContentPackage`
+  - Raises `ValueError` for unsupported platforms — blog, instagram, youtube deferred to Phase 4
+- **`tests/test_post_generator.py`** — 27 unit tests covering run, prompt rendering, Bedrock call, error paths, and all helper functions
+
+### Notes
+- Other platforms (blog, instagram, youtube) will be added to `PostGenerator` in Phase 4 alongside their `publish()` implementations
+
+---
+
+## [0.7.0] — 2026-07-02
+
+### Added
+- **`agent/tools/bedrock_summariser.py`** — `ArticleSummariser` tool:
+  - Renders the `agent/prompts/summarize.md` template with the article batch
+  - Calls Bedrock `converse` API (model configurable via `AgentConfig.bedrock_model_id`)
+  - Parses structured JSON response into `ArticleSummary` objects
+  - Drops articles flagged by the model as duplicate coverage
+  - Handles JSON in markdown fences, inline arrays, or prose-wrapped responses
+  - Skips incomplete items rather than raising
+- **`tests/test_bedrock_summariser.py`** — 20 unit tests covering run, JSON extraction edge cases, prompt rendering, and error paths
+
+---
+
+## [0.6.0] — 2026-07-02
+
+### Added
+- **`agent/tools/deduplication.py`** — `ArticleDeduplicator` tool:
+  - `filter_new(articles)` — batch-checks URLs against DynamoDB, returns only unseen articles
+  - `mark_seen(articles)` — writes processed URLs to DynamoDB with TTL for automatic expiry
+  - Handles batches >100 items (DynamoDB `BatchGetItem` limit) and >25 items (`BatchWriteItem` limit) transparently
+- **`tests/test_deduplication.py`** — 18 unit tests including a full round-trip test and large-batch (120 item) coverage
+- **`AgentConfig.article_ttl_days`** — configurable DynamoDB TTL (default 90 days, overridable via `ARTICLE_TTL_DAYS` env var)
+
+---
+
+## [0.5.0] — 2026-07-02
+
+### Added
+- **`agent/tools/news_fetcher.py`** — `NewsFetcher` tool implementing the hybrid feed-source strategy:
+  - Queries DynamoDB `news_feeds_table` for enabled `FeedSource` records
+  - Falls back to `AgentConfig.news_feed_urls` when the table is empty or unreachable
+  - Parses RSS/Atom feeds with `feedparser`, extracts `Article` objects
+  - Deduplicates by URL within a batch and caps output at `max_articles_per_run`
+  - Gracefully skips failed feeds and continues with the rest
+- **`tests/test_news_fetcher.py`** — 23 unit tests covering DynamoDB resolution, RSS parsing, dedup, cap, and all helper functions
+- **`feedparser>=6.0`** added to `requirements.txt`
+
+---
+
+## [0.4.0] — 2026-07-02
+
+### Added
+- **`agent/models/__init__.py`** — canonical data model definitions for all inter-module contracts:
+  - `FeedSource` — news feed record loaded from DynamoDB or the fallback URL list; includes `from_url()` factory
+  - `Article` — raw fetched article (url, title, source, published_at, content)
+  - `ArticleSummary` — Bedrock-summarised article (moved here from `publishers/base.py`)
+  - `ContentPackage` — platform-agnostic bundle passed to every publisher (moved here)
+  - `PublishResult` — publisher delivery outcome (moved here)
+- **`tests/test_models.py`** — 15 unit tests covering all five models and backwards-compatibility imports
+- **`agent/config.py`** — three new configuration fields for Phase 2:
+  - `news_feeds_table` — DynamoDB table name for the managed feed registry (`tech-news-agent-feeds`)
+  - `news_feed_urls` — fallback RSS feed list (5 defaults; overridable via `NEWS_FEED_URLS` env var)
+  - `max_articles_per_run` — Bedrock cost cap, defaults to 20 (overridable via `MAX_ARTICLES_PER_RUN`)
+- **`tests/test_config.py`** — expanded from 2 to 11 tests covering all config fields
+
+### Changed
+- `agent/publishers/base.py` — `ArticleSummary`, `ContentPackage`, and `PublishResult` are now imported from `agent/models` and re-exported for backwards compatibility; dataclass definitions removed from this file
+- `agent/config.py` — module docstring expanded with hybrid feed-source strategy documentation
 
 ---
 

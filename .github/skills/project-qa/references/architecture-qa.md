@@ -46,23 +46,22 @@ Everything is serverless — no EC2 or containers.
 ## Q: What is the pipeline flow step by step?
 
 1. EventBridge fires the scheduled rule.
-2. AgentCore starts the agent and begins the reasoning loop.
-3. The agent calls `fetch_tech_news` → receives a list of raw articles.
-4. For each article, the agent calls `check_duplicate` → DynamoDB lookup by URL hash.
-5. Remaining articles are passed to `summarise_articles` → Bedrock call using `agent/prompts/summarize.md`.
-6. Bedrock returns structured summaries, which are assembled into a `ContentPackage`.
-7. `get_active_publishers(AgentConfig.enabled_publishers)` instantiates all configured publishers.
-8. Each publisher's `run(package)` is called:
-   - `format_content(package)` → platform-specific text (may call Bedrock with a platform prompt).
-   - `publish(content)` → delivers to the platform API.
-9. Processed article URLs are written to DynamoDB.
-10. CloudWatch receives metrics: articles fetched, articles after dedup, publish success/failure per platform.
+2. AgentCore starts the agent; `agent/main.py` `handler()` is invoked.
+3. `NewsPipeline.run()` is called with injected boto3 clients.
+4. **Step 1 — Fetch:** `NewsFetcher.run()` reads enabled feed sources from DynamoDB (`tech-news-agent-feeds`), falls back to `AgentConfig.news_feed_urls`, parses RSS feeds via `feedparser`, returns `list[Article]`.
+5. **Step 2 — Dedup filter:** `ArticleDeduplicator.filter_new()` batch-checks URLs against DynamoDB (`tech-news-agent-articles`). If empty → early exit with `PipelineResult.skipped = True`.
+6. **Step 3 — Summarise:** `ArticleSummariser.run()` sends articles to Bedrock using `agent/prompts/summarize.md`. Returns `list[ArticleSummary]`. If empty → early exit.
+7. **Step 4 — Generate post:** `PostGenerator.run(summaries, platform="linkedin")` loads `agent/prompts/platforms/linkedin.md`, renders it, calls Bedrock, returns `ContentPackage`.
+8. **Step 5 — Publish:** `get_active_publishers(AgentConfig.enabled_publishers)` instantiates publishers. Each `publisher.run(package)` is called. Failures are isolated — one bad publisher doesn’t stop others.
+9. **Step 6 — Mark seen:** `ArticleDeduplicator.mark_seen()` writes processed URLs to DynamoDB with a TTL (default 90 days).
+10. `NewsPipeline.run()` returns `PipelineResult` with counts and publish outcomes. `handler()` returns a stats dict to AgentCore.
 
 ---
 
 ## Q: What is a ContentPackage and where is it defined?
 
-`ContentPackage` is defined in `agent/publishers/base.py`. It is the **platform-agnostic data contract** produced after summarisation and passed to every publisher.
+`ContentPackage` is defined in `agent/models/__init__.py` (the canonical location) and
+re-exported from `agent/publishers/base.py` for backwards compatibility.
 
 ```python
 @dataclass

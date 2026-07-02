@@ -41,7 +41,7 @@ pytest --cov=agent --cov-report=term-missing  # with coverage
 ```
 
 **Q: What is a ContentPackage?**
-A `ContentPackage` is the platform-agnostic data contract produced by the pipeline after Bedrock summarises the articles. It contains `topic`, `digest`, `articles`, `keywords`, and `raw_post`. Every publisher receives one and formats it for its platform. Defined in `agent/publishers/base.py`.
+A `ContentPackage` is the platform-agnostic data contract produced by the pipeline after Bedrock summarises the articles. It contains `topic`, `digest`, `articles`, `keywords`, and `raw_post`. Every publisher receives one and formats it for its platform. Defined in `agent/models/__init__.py` (re-exported from `agent/publishers/base.py` for backwards compatibility).
 
 **Q: Which AWS services does this project use?**
 AgentCore (agent runtime), EventBridge (scheduling), Bedrock (LLM), DynamoDB (dedup state), Secrets Manager (credentials), CloudWatch (logs/metrics), IAM (least-privilege roles). See [Architecture Q&A](./references/architecture-qa.md).
