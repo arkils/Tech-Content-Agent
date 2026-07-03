@@ -124,10 +124,12 @@ class AgentConfig:
     blog_output_path: str = os.environ.get("BLOG_OUTPUT_PATH", "output/posts")
 
     # -------------------------------------------------------------------------
-    # AWS Secrets Manager secret names
-    # Values are NEVER stored here — only the key names used to look them up.
+    # AWS SSM Parameter Store parameter paths
+    # Values are NEVER stored here — only the paths used to look them up.
+    # Credentials are stored as SecureString parameters; fetch with
+    # ssm.get_parameter(Name=..., WithDecryption=True) at runtime.
     # -------------------------------------------------------------------------
-    NEWS_API_SECRET_NAME: str = "tech-news-agent/news-api"
-    LINKEDIN_SECRET_NAME: str = "tech-news-agent/linkedin"
-    INSTAGRAM_SECRET_NAME: str = "tech-news-agent/instagram"
-    YOUTUBE_SECRET_NAME: str = "tech-news-agent/youtube"
+    NEWS_API_PARAM_PATH: str = "/tech-news-agent/news-api"
+    LINKEDIN_PARAM_PATH: str = "/tech-news-agent/linkedin"
+    INSTAGRAM_PARAM_PATH: str = "/tech-news-agent/instagram"
+    YOUTUBE_PARAM_PATH: str = "/tech-news-agent/youtube"

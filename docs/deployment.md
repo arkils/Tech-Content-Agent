@@ -9,7 +9,7 @@ in your AWS account and configuring all required secrets.
 
 1. [Prerequisites](#1-prerequisites)
 2. [One-time AWS account bootstrap](#2-one-time-aws-account-bootstrap)
-3. [Configure secrets in AWS Secrets Manager](#3-configure-secrets-in-aws-secrets-manager)
+3. [Configure credentials in SSM Parameter Store](#3-configure-credentials-in-ssm-parameter-store)
 4. [Configure environment variables](#4-configure-environment-variables)
 5. [Deploy the infrastructure](#5-deploy-the-infrastructure)
 6. [Verify the deployment](#6-verify-the-deployment)
@@ -23,20 +23,41 @@ in your AWS account and configuring all required secrets.
 Install the following tools before deploying:
 
 | Tool | Version | Install command |
-|------|---------|-----------------|
-| Python | 3.13+ | [python.org](https://www.python.org/downloads/) |
-| AWS CLI | v2 | [aws.amazon.com/cli](https://aws.amazon.com/cli/) |
-| Node.js | 18+ | Required for CDK CLI |
+|------|---------|---------------|
+| Python | 3.9+ | [python.org](https://www.python.org/downloads/) — macOS: `brew install python` |
+| AWS CLI | v2 | [aws.amazon.com/cli](https://aws.amazon.com/cli/) — macOS: `brew install awscli` |
+| Node.js | 18+ | [nodejs.org](https://nodejs.org/) — macOS: `brew install node` |
 | AWS CDK CLI | v2 | `npm install -g aws-cdk` |
+
+> **Note:** Docker is **not required**. The Lambda asset is bundled locally
+> using a built-in pip-based bundler.
 
 Verify your tools:
 
 ```bash
-python --version      # Python 3.13.x
+python --version      # 3.9 or higher (use python3 on macOS if python is not found)
 aws --version         # aws-cli/2.x.x
 node --version        # v18.x.x or higher
 cdk --version         # 2.x.x
 ```
+
+Create and activate a virtual environment, then install dependencies:
+
+```bash
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Windows PowerShell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Then install dependencies (all platforms)
+pip install -r requirements.txt
+```
+
+> **macOS note:** Always create the venv with `python3`. Once the venv is
+> activated, `python` and `pip` point to the venv's interpreter automatically.
 
 Configure the AWS CLI with credentials for your target account:
 
@@ -48,59 +69,55 @@ aws configure
 # Default output format: json
 ```
 
-> **Tip:** For team / CI environments use an IAM role with OIDC instead of
-> long-lived access keys. See [GitHub Actions deployment](#github-actions-deployment).
+> **Tip:** For a personal account, long-lived IAM user access keys are the
+> simplest option. For shared/CI environments, use an IAM role with OIDC.
 
 ---
 
 ## 2. One-time AWS account bootstrap
 
-CDK must be bootstrapped **once per AWS account / region** before the first deploy:
+CDK must be bootstrapped **once per AWS account / region** before the first deploy.
+This creates the `CDKToolkit` CloudFormation stack, an S3 bucket for Lambda assets,
+and the IAM roles CDK needs to deploy.
 
 ```bash
-# Bootstrap the default region (us-east-1)
-cdk bootstrap aws://<YOUR_ACCOUNT_ID>/us-east-1
-
-# Or let CDK detect account and region automatically
-cdk bootstrap
+cdk bootstrap -c owner=<your-name>
 ```
 
-This creates the `CDKToolkit` CloudFormation stack, an S3 bucket for assets,
-and the IAM roles CDK needs to deploy resources.
+To bootstrap a specific account/region explicitly:
+
+```bash
+cdk bootstrap aws://<YOUR_ACCOUNT_ID>/us-east-1 -c owner=<your-name>
+```
 
 ---
 
-## 3. Configure secrets in AWS Secrets Manager
+## 3. Configure credentials in SSM Parameter Store
 
-All platform credentials are stored in AWS Secrets Manager.
+Platform credentials are stored as **SSM Parameter Store SecureString** parameters —
+encrypted at rest with KMS, free to use, no per-secret monthly fee.
+
 **Never store actual credential values in code, config files, or environment variables.**
 
-The secret names are defined as constants in `agent/config.py`.
+The parameter paths are defined as constants in `agent/config.py`.
+CDK creates the parameters with a `"placeholder"` value — you must replace each
+value before the first run.
 
 ### 3a. News API key
 
 Required — the agent uses this to fetch tech news articles.
 
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/news-api" \
-    --description "News API key for tech-news-agent" \
-    --region us-east-1
-```
-
-Then put the actual value:
-
-```bash
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/news-api" \
-    --secret-string '{"api_key": "YOUR_NEWS_API_KEY_HERE"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/news-api" \
+    --type "SecureString" \
+    --value '{"api_key": "YOUR_NEWS_API_KEY_HERE"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
 ```json
-{
-    "api_key": "<your-newsapi.org-or-similar-api-key>"
-}
+{ "api_key": "<your-newsapi.org-or-similar-api-key>" }
 ```
 
 ### 3b. LinkedIn credentials
@@ -114,17 +131,11 @@ Obtain credentials from the [LinkedIn Developer Portal](https://www.linkedin.com
 4. Note your person URN (`urn:li:person:<id>`) from the `/v2/me` API.
 
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/linkedin" \
-    --description "LinkedIn API credentials for tech-news-agent" \
-    --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/linkedin" \
-    --secret-string '{
-        "access_token": "YOUR_LINKEDIN_ACCESS_TOKEN",
-        "author_urn": "urn:li:person:YOUR_PERSON_ID"
-    }'
+aws ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --type "SecureString" \
+    --value '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
@@ -135,8 +146,7 @@ Expected JSON structure:
 }
 ```
 
-> **Note:** LinkedIn access tokens expire after 60 days. Implement token
-> refresh or regenerate manually before expiry.
+> **Note:** LinkedIn access tokens expire after 60 days — regenerate manually before expiry.
 
 ### 3c. Instagram credentials
 
@@ -149,29 +159,22 @@ Obtain credentials from the [Meta for Developers portal](https://developers.face
 4. Note your Instagram User ID.
 
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/instagram" \
-    --description "Instagram Graph API credentials for tech-news-agent" \
-    --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/instagram" \
-    --secret-string '{
-        "access_token": "YOUR_INSTAGRAM_ACCESS_TOKEN",
-        "instagram_account_id": "YOUR_IG_USER_ID"
-    }'
+aws ssm put-parameter \
+    --name "/tech-news-agent/instagram" \
+    --type "SecureString" \
+    --value '{"access_token": "YOUR_TOKEN", "instagram_account_id": "YOUR_ID"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
 ```json
 {
-    "access_token": "<long-lived-user-access-token>",
+    "access_token":        "<long-lived-user-access-token>",
     "instagram_account_id": "<ig-user-id>"
 }
 ```
 
-> **Note:** Long-lived tokens expire after 60 days. Refresh them using the
-> `/refresh_access_token` endpoint before expiry.
+> **Note:** Long-lived tokens expire after 60 days — refresh via `/refresh_access_token` before expiry.
 
 ### 3d. YouTube credentials
 
@@ -181,22 +184,13 @@ Obtain credentials from [Google Cloud Console](https://console.cloud.google.com/
 1. Create a project and enable the YouTube Data API v3.
 2. Create an OAuth 2.0 Client ID (Desktop or Web App type).
 3. Run the OAuth flow once locally to obtain a refresh token.
-4. Note your YouTube Channel ID.
 
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/youtube" \
-    --description "YouTube Data API credentials for tech-news-agent" \
-    --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/youtube" \
-    --secret-string '{
-        "client_id": "YOUR_GOOGLE_CLIENT_ID",
-        "client_secret": "YOUR_GOOGLE_CLIENT_SECRET",
-        "refresh_token": "YOUR_OAUTH2_REFRESH_TOKEN",
-        "channel_id": "YOUR_YOUTUBE_CHANNEL_ID"
-    }'
+aws ssm put-parameter \
+    --name "/tech-news-agent/youtube" \
+    --type "SecureString" \
+    --value '{"client_id":"ID","client_secret":"SECRET","refresh_token":"TOKEN","channel_id":"CHANNEL"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
@@ -209,16 +203,13 @@ Expected JSON structure:
 }
 ```
 
-### Verify secrets are in place
+### Verify parameters are in place
 
 ```bash
-# List all tech-news-agent secrets
-aws secretsmanager list-secrets \
-    --filter Key=name,Values=tech-news-agent \
-    --query "SecretList[].Name"
-
-# Verify a specific secret exists (does NOT reveal the value)
-aws secretsmanager describe-secret --secret-id "tech-news-agent/linkedin"
+# List all tech-news-agent parameters (names only, values hidden)
+aws ssm get-parameters-by-path \
+    --path "/tech-news-agent" \
+    --query "Parameters[].Name"
 ```
 
 ---
@@ -251,20 +242,17 @@ export BLOG_OUTPUT_PATH=output/posts
 ## 5. Deploy the infrastructure
 
 ```bash
-# 1. Install Python dependencies
-pip install -r requirements.txt
+# 1. Synthesise the CloudFormation templates (dry-run, no AWS calls)
+cdk synth -c owner=<your-name>
 
-# 2. From the repo root, synthesise the CloudFormation templates
-cdk synth
+# 2. Review what will be created
+cdk diff -c owner=<your-name>
 
-# 3. Review what will be created / changed
-cdk diff
+# 3. Deploy all stacks
+cdk deploy --all -c owner=<your-name>
 
-# 4. Deploy everything
-cdk deploy --all
-
-# Or deploy a single stack by name (once stacks are implemented)
-cdk deploy TechNewsAgentStack
+# Or deploy a single stack
+cdk deploy TechNewsAgentStorage -c owner=<your-name>
 ```
 
 CDK will display a summary of IAM changes and prompt for confirmation
@@ -272,40 +260,49 @@ before creating any resources.
 
 ### What gets deployed
 
-| Resource | CloudFormation logical ID | Purpose |
-|----------|--------------------------|---------|
-| AgentCore Agent | `TechNewsAgent` | Runs the AI reasoning loop |
-| EventBridge Rule | `TechNewsSchedule` | Triggers the agent on a cron schedule |
-| DynamoDB Table | `ArticlesTable` | Tracks processed article URLs |
-| IAM Role | `AgentExecutionRole` | Least-privilege role for the agent |
-| CloudWatch Log Group | `AgentLogGroup` | Structured agent logs |
-| Secrets Manager grants | (inline policies) | Allow agent to read platform secrets |
+| Stack | Resource | Purpose |
+|-------|----------|---------| 
+| `TechNewsAgentStorage` | DynamoDB `tech-news-agent-articles` | Article deduplication with TTL |
+| `TechNewsAgentStorage` | DynamoDB `tech-news-agent-feeds` | Managed RSS feed registry |
+| `TechNewsAgentSecrets` | Secrets Manager × 4 | Platform credential stubs |
+| `TechNewsAgent` | Lambda `tech-news-agent` | Pipeline handler (15 min, 512 MB) |
+| `TechNewsAgent` | IAM execution role | Least-privilege access to DynamoDB, Bedrock, Secrets Manager |
+| `TechNewsAgent` | CloudWatch log group `/aws/lambda/tech-news-agent` | Structured logs (30-day retention) |
+| `TechNewsAgentScheduler` | EventBridge rule `tech-news-agent-daily` | Mon–Fri trigger at 08:00 UTC |
 
-> **Note:** CDK stacks are placeholders until implemented. The table above
-> reflects the planned resources described in `infrastructure/stacks/README.md`.
+### Resource tags applied to every resource
+
+| Tag | Value |
+|-----|-------|
+| `Project` | `tech-news-agent` |
+| `ManagedBy` | `cdk` |
+| `Owner` | value of `-c owner=<your-name>` |
 
 ---
 
 ## 6. Verify the deployment
 
-After a successful deploy, run a smoke test:
+After a successful deploy, run a quick smoke test:
 
 ```bash
-# Check the agent log group exists
-aws logs describe-log-groups \
-    --log-group-name-prefix /tech-news-agent
+# Check the Lambda function exists
+aws lambda get-function --function-name tech-news-agent --query 'Configuration.State'
 
-# Check the DynamoDB table is active
+# Check the log group exists
+aws logs describe-log-groups \
+    --log-group-name-prefix /aws/lambda/tech-news-agent
+
+# Check the DynamoDB articles table is ACTIVE
 aws dynamodb describe-table \
     --table-name tech-news-agent-articles \
     --query "Table.TableStatus"
 
-# Manually trigger the EventBridge rule (once implemented)
-aws events put-events --entries '[{
-    "Source": "tech-news-agent.manual",
-    "DetailType": "ManualTrigger",
-    "Detail": "{}"
-}]'
+# Manually invoke the Lambda (after populating secrets)
+aws lambda invoke \
+    --function-name tech-news-agent \
+    --payload '{}' \
+    response.json
+cat response.json
 ```
 
 ---
@@ -316,10 +313,10 @@ After making code or infrastructure changes:
 
 ```bash
 # Review what will change
-cdk diff
+cdk diff -c owner=<your-name>
 
 # Apply changes
-cdk deploy --all
+cdk deploy --all -c owner=<your-name>
 ```
 
 CDK performs a CloudFormation change-set — only changed resources are updated.

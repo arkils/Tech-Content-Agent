@@ -31,14 +31,15 @@
 - [x] `news_pipeline` workflow — full end-to-end orchestration with early-exit, publisher isolation, and second-run dedup
 - [x] Unit test coverage — 168 tests passing
 
-## Phase 3 — Infrastructure
+## Phase 3 — Infrastructure ✅ Complete
 
-- [ ] Implement `StorageStack` — DynamoDB table (`tech-news-agent-articles`)
-- [ ] Implement `TechNewsAgentStack` — AgentCore agent + IAM roles + CloudWatch log groups
-- [ ] Implement `SchedulerStack` — EventBridge Scheduler rule
-- [ ] Implement `SecretsStack` — Secrets Manager stubs + IAM grants
-- [ ] Deploy all CDK stacks to a dev AWS account
-- [ ] Tag all resources with `Project=tech-news-agent` and `Environment=dev`
+- [x] Implement `StorageStack` — DynamoDB table (`tech-news-agent-articles`) + feeds table (`tech-news-agent-feeds`)
+- [x] Implement `TechNewsAgentStack` — Lambda function + IAM roles + CloudWatch log group
+- [x] Implement `SchedulerStack` — EventBridge rule (Mon–Fri 08:00 UTC)
+- [x] Implement `SecretsStack` — Secrets Manager stubs + IAM grants
+- [x] `cdk synth` verified — all four stacks synthesise cleanly to `cdk.out/`
+- [x] Tag all resources with `Project=tech-news-agent`, `ManagedBy=cdk`, `Owner=<context>`
+- [x] Local Lambda bundler — no Docker required for synth/deploy
 
 ## Phase 4 — Platform API integrations
 

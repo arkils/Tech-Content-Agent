@@ -10,7 +10,50 @@ This project uses [semantic versioning](https://semver.org/) — pre-1.0 while i
 ## [Unreleased]
 
 ### Planned next
-- CDK stack implementations (Phase 3)
+- Phase 4 — Platform API integrations (LinkedIn, Instagram, YouTube `publish()`)
+
+---
+
+## [0.10.1] — 2026-07-03
+
+### Changed
+- **`infrastructure/stacks/secrets_stack.py`** — switched from AWS Secrets Manager to **SSM Parameter Store SecureString** (eliminates ~$1.60/month fixed cost; encryption via KMS is retained)
+- **`infrastructure/stacks/agent_stack.py`** — replaced four individual `secretsmanager:GetSecretValue` grants with a single `ssm:GetParameter` policy on `arn:aws:ssm:*:*:parameter/tech-news-agent/*`; removed `aws_secretsmanager` import
+- **`infrastructure/app.py`** — removed secret object references from `TechNewsAgentStack` constructor call
+- **`agent/config.py`** — renamed `*_SECRET_NAME` constants to `*_PARAM_PATH`; updated values to use `/tech-news-agent/` path prefix
+- **`agent/publishers/linkedin.py`**, **`instagram.py`**, **`youtube.py`** — updated docstrings to reference SSM Parameter Store
+- **`tests/test_config.py`** — updated test to assert `*_PARAM_PATH` constants
+- **`docs/deployment.md`** — section 3 rewritten; `aws secretsmanager` commands replaced with `aws ssm put-parameter`
+
+---
+
+## [0.10.0] — 2026-07-03
+
+### Added
+- **`infrastructure/stacks/storage_stack.py`** — `StorageStack`:
+  - DynamoDB table `tech-news-agent-articles` (PK: `url`, TTL: `ttl`, PAY_PER_REQUEST, AWS-managed encryption, PITR enabled)
+  - DynamoDB table `tech-news-agent-feeds` (PK: `feed_url`, same settings)
+  - CloudFormation outputs for both table names
+- **`infrastructure/stacks/secrets_stack.py`** — `SecretsStack`:
+  - Four Secrets Manager stub secrets: `tech-news-agent/news-api`, `tech-news-agent/linkedin`, `tech-news-agent/instagram`, `tech-news-agent/youtube`
+  - CloudFormation outputs for all secret ARNs
+- **`infrastructure/stacks/agent_stack.py`** — `TechNewsAgentStack`:
+  - Python 3.12 Lambda function `tech-news-agent` (15 min timeout, 512 MB)
+  - Local bundler (`_LocalBundler`) — installs `feedparser` and copies `agent/` package without Docker
+  - Docker fallback bundling for CI/CD environments
+  - CloudWatch log group `/aws/lambda/tech-news-agent` (30-day retention)
+  - IAM: DynamoDB read/write on articles table, DynamoDB read on feeds table, `bedrock:InvokeModel` on Claude model, `secretsmanager:GetSecretValue` on all four secrets
+- **`infrastructure/stacks/scheduler_stack.py`** — `SchedulerStack`:
+  - EventBridge rule `tech-news-agent-daily` firing Mon–Fri at 08:00 UTC
+- **`infrastructure/app.py`** — wires all four stacks; applies `Project`, `ManagedBy`, `Owner` tags to every resource; `owner` value read from CDK context (`-c owner=<value>`)
+- **`cdk.json`** — added `owner` and `@aws-cdk/core:defaultCrossStackReferences` context values
+
+### Changed
+- **`infrastructure/constructs/`** renamed to **`infrastructure/lib/`** — avoids shadowing the `constructs` PyPI package when Python adds `infrastructure/` to `sys.path`
+
+### Notes
+- `cdk synth -c owner=<name>` synthesises all four stacks to `cdk.out/` with no Docker required
+- Secrets are created as empty stubs — populate values via AWS Console or CLI before first deploy
 
 ---
 

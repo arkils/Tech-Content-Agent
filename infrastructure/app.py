@@ -3,28 +3,61 @@ infrastructure/app.py
 =====================
 AWS CDK application entry point for tech-news-agent.
 
-This file bootstraps the CDK app and instantiates all stacks.
-Run `cdk deploy` from this directory to provision infrastructure.
-
-TODO:
-    - Instantiate TechNewsAgentStack once implemented.
-    - Add environment-specific configuration (dev / staging / prod).
-    - Add stack tagging for cost allocation and ownership.
-
-Usage:
+Usage
+-----
+    # Synth (dry-run)
     cdk synth
-    cdk deploy
-    cdk destroy
+
+    # Deploy all stacks
+    cdk deploy --all -c owner=<your-name>
+
+    # Destroy all stacks
+    cdk destroy --all
+
+Context parameters
+------------------
+``owner``
+    Value for the ``Owner`` resource tag.  Pass via ``-c owner=<value>``
+    or set in ``cdk.json`` under ``context.owner``.
 """
+
+from __future__ import annotations
 
 import aws_cdk as cdk
 
-# TODO: import stacks once implemented
-# from stacks.agent_stack import TechNewsAgentStack
+from stacks.agent_stack import TechNewsAgentStack
+from stacks.scheduler_stack import SchedulerStack
+from stacks.secrets_stack import SecretsStack
+from stacks.storage_stack import StorageStack
 
 app = cdk.App()
 
-# TODO: instantiate stacks
-# TechNewsAgentStack(app, "TechNewsAgentStack", ...)
+# ---------------------------------------------------------------------------
+# Tags applied to every resource in every stack.
+# Pass -c owner=<your-name> at deploy time, or set context.owner in cdk.json.
+# ---------------------------------------------------------------------------
+owner: str = app.node.try_get_context("owner") or "unset"
+cdk.Tags.of(app).add("Project", "tech-news-agent")
+cdk.Tags.of(app).add("ManagedBy", "cdk")
+cdk.Tags.of(app).add("Owner", owner)
+
+# ---------------------------------------------------------------------------
+# Stacks
+# ---------------------------------------------------------------------------
+storage = StorageStack(app, "TechNewsAgentStorage")
+secrets = SecretsStack(app, "TechNewsAgentSecrets")
+
+agent = TechNewsAgentStack(
+    app,
+    "TechNewsAgent",
+    articles_table=storage.articles_table,
+    feeds_table=storage.feeds_table,
+)
+
+scheduler = SchedulerStack(
+    app,
+    "TechNewsAgentScheduler",
+    agent_function=agent.function,
+)
 
 app.synth()

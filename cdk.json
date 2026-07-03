@@ -5,6 +5,8 @@
     "exclude": ["cdk.out/**", "**/__pycache__/**"]
   },
   "context": {
+    "owner": "unset",
+    "@aws-cdk/core:defaultCrossStackReferences": "weak",
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/aws-iam:minimizePolicies": true,

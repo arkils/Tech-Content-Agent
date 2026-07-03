@@ -6,8 +6,8 @@ Instagram content publisher.
 Formats a ContentPackage as an Instagram caption and publishes it via the
 Instagram Graph API (Meta).
 
-Credentials are fetched from AWS Secrets Manager at publish time.
-Secret name: configured via ``AgentConfig.INSTAGRAM_SECRET_NAME``.
+Credentials are fetched from AWS SSM Parameter Store at publish time.
+Parameter path: ``AgentConfig.INSTAGRAM_PARAM_PATH``.
 
 Expected secret JSON structure::
 

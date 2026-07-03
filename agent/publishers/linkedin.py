@@ -6,8 +6,8 @@ LinkedIn content publisher.
 Formats a ContentPackage as a professional LinkedIn post and delivers it
 via the LinkedIn Share API.
 
-Credentials are fetched from AWS Secrets Manager at publish time.
-Secret name: configured via ``AgentConfig.LINKEDIN_SECRET_NAME``.
+Credentials are fetched from AWS SSM Parameter Store at publish time.
+Parameter path: ``AgentConfig.LINKEDIN_PARAM_PATH``.
 
 Expected secret JSON structure::
 

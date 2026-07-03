@@ -6,8 +6,8 @@ YouTube Community Post publisher.
 Formats a ContentPackage as a YouTube Community Post and delivers it via
 the YouTube Data API v3.
 
-Credentials are fetched from AWS Secrets Manager at publish time.
-Secret name: configured via ``AgentConfig.YOUTUBE_SECRET_NAME``.
+Credentials are fetched from AWS SSM Parameter Store at publish time.
+Parameter path: ``AgentConfig.YOUTUBE_PARAM_PATH``.
 
 Expected secret JSON structure::
 
