@@ -26,7 +26,7 @@ Notes:
     - A media object (image or Reel cover) is required for feed posts.
 
 TODO:
-    - Implement ``_get_credentials()`` using boto3 Secrets Manager.
+    - Implement ``_get_credentials()`` using boto3 SSM Parameter Store.
     - Implement ``publish()`` using the two-step Graph API flow:
         1. POST /ig-user-id/media  (create media container)
         2. POST /ig-user-id/media_publish  (publish container)
@@ -51,7 +51,7 @@ class InstagramPublisher(BasePublisher):
     Publishes formatted tech-news content to Instagram.
 
     TODO:
-        - Inject boto3 Secrets Manager client for testability.
+        - Inject boto3 SSM client for testability.
         - Add image URL / asset support (required by the Graph API).
     """
 
@@ -82,7 +82,7 @@ class InstagramPublisher(BasePublisher):
         Publish to Instagram via the Graph API two-step flow.
 
         TODO:
-            - Retrieve credentials from AWS Secrets Manager.
+            - Retrieve credentials from AWS SSM Parameter Store.
             - Select or generate an image asset for the post.
             - Step 1: Create media container via POST /ig-user-id/media.
             - Step 2: Publish container via POST /ig-user-id/media_publish.

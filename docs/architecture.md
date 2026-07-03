@@ -29,7 +29,7 @@
 │        └──► publish_linkedin_post ──► LinkedIn API              │
 │                                                                 │
 │  Amazon CloudWatch (logs, metrics, alarms)                      │
-│  AWS Secrets Manager (LinkedIn credentials, News API keys)      │
+│  AWS SSM Parameter Store (LinkedIn credentials, News API keys)  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,7 +42,7 @@
 | Summarisation | Amazon Bedrock | LLM-based article summarisation |
 | Post generation | Amazon Bedrock | LLM-based LinkedIn post creation |
 | State store | Amazon DynamoDB | Tracks processed article URLs |
-| Secrets | AWS Secrets Manager | Stores API credentials at rest, encrypted |
+| Secrets | AWS SSM Parameter Store | Stores API credentials at rest, encrypted (SecureString) |
 | Observability | Amazon CloudWatch | Logs, metrics, and alarms |
 
 ## TODO

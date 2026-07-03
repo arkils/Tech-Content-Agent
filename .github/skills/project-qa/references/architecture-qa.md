@@ -36,7 +36,7 @@ Everything is serverless — no EC2 or containers.
 | **Amazon Bedrock** | LLM (Claude) for summarisation and post generation |
 | **Amazon EventBridge** | Schedules the agent run (cron-style trigger) |
 | **Amazon DynamoDB** | Stores processed article URLs to prevent duplicate posts |
-| **AWS Secrets Manager** | Stores all platform credentials at rest, encrypted |
+| **AWS SSM Parameter Store** | Stores all platform credentials at rest, encrypted (SecureString) |
 | **Amazon CloudWatch** | Receives structured logs and custom metrics from the pipeline |
 | **AWS IAM** | Least-privilege execution roles for the agent |
 | **AWS CDK** | Provisions all infrastructure as code |
@@ -149,7 +149,7 @@ Defined as planned stacks in `infrastructure/stacks/README.md`:
 | `TechNewsAgentStack` | AgentCore agent, IAM roles, CloudWatch log groups |
 | `SchedulerStack` | EventBridge Scheduler rule targeting the agent |
 | `StorageStack` | DynamoDB table `tech-news-agent-articles` |
-| `SecretsStack` | Secrets Manager secret stubs + IAM grant policies |
+| `SecretsStack` | SSM Parameter Store SecureString stubs |
 
 All CDK code lives in `infrastructure/`. Run `cdk synth` to generate CloudFormation.
 

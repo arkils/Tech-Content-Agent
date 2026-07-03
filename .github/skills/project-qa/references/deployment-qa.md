@@ -59,108 +59,104 @@ CDK will show IAM changes and prompt for confirmation before creating resources.
 
 ---
 
-## Q: How do I create the secrets in AWS Secrets Manager?
+## Q: How do I create the parameters in AWS SSM Parameter Store?
 
 Run these commands — **replace placeholder values with your real credentials**.
 
 ### News API (required)
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/news-api" \
+aws ssm put-parameter \
+    --name "/tech-news-agent/news-api" \
     --description "News API key for tech-news-agent" \
+    --type SecureString \
+    --value '{"api_key": "YOUR_API_KEY_HERE"}' \
     --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/news-api" \
-    --secret-string '{"api_key": "YOUR_API_KEY_HERE"}'
 ```
 
 ### LinkedIn (required only if `linkedin` is enabled)
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/linkedin" \
+aws ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
     --description "LinkedIn API credentials" \
-    --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/linkedin" \
-    --secret-string '{
+    --type SecureString \
+    --value '{
         "access_token": "YOUR_LINKEDIN_ACCESS_TOKEN",
         "author_urn": "urn:li:person:YOUR_PERSON_ID"
-    }'
+    }' \
+    --region us-east-1
 ```
 Get credentials from: [LinkedIn Developer Portal](https://www.linkedin.com/developers/)
 Token expires: every 60 days.
 
 ### Instagram (required only if `instagram` is enabled)
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/instagram" \
+aws ssm put-parameter \
+    --name "/tech-news-agent/instagram" \
     --description "Instagram Graph API credentials" \
-    --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/instagram" \
-    --secret-string '{
+    --type SecureString \
+    --value '{
         "access_token": "YOUR_INSTAGRAM_ACCESS_TOKEN",
         "instagram_account_id": "YOUR_IG_USER_ID"
-    }'
+    }' \
+    --region us-east-1
 ```
 Get credentials from: [Meta for Developers](https://developers.facebook.com/)
 Token expires: every 60 days — refresh via `/refresh_access_token` endpoint.
 
 ### YouTube (required only if `youtube` is enabled)
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/youtube" \
+aws ssm put-parameter \
+    --name "/tech-news-agent/youtube" \
     --description "YouTube Data API credentials" \
-    --region us-east-1
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/youtube" \
-    --secret-string '{
+    --type SecureString \
+    --value '{
         "client_id": "YOUR_GOOGLE_CLIENT_ID",
         "client_secret": "YOUR_GOOGLE_CLIENT_SECRET",
         "refresh_token": "YOUR_OAUTH2_REFRESH_TOKEN",
         "channel_id": "YOUR_YOUTUBE_CHANNEL_ID"
-    }'
+    }' \
+    --region us-east-1
 ```
 Get credentials from: [Google Cloud Console](https://console.cloud.google.com/) → YouTube Data API v3.
 
 ---
 
-## Q: How do I verify my secrets are set correctly?
+## Q: How do I verify my parameters are set correctly?
 
 ```bash
-# List all tech-news-agent secrets
-aws secretsmanager list-secrets \
-    --filter Key=name,Values=tech-news-agent \
-    --query "SecretList[].Name"
+# List all tech-news-agent parameters
+aws ssm describe-parameters \
+    --parameter-filters Key=Name,Option=BeginsWith,Values=/tech-news-agent \
+    --query "Parameters[].Name"
 
-# Verify a secret exists without revealing the value
-aws secretsmanager describe-secret --secret-id "tech-news-agent/linkedin"
+# Verify a parameter exists without revealing the value
+aws ssm describe-parameters \
+    --parameter-filters Key=Name,Values=/tech-news-agent/linkedin
 
-# Check the value (careful — this shows the actual secret in your terminal)
-aws secretsmanager get-secret-value \
-    --secret-id "tech-news-agent/linkedin" \
-    --query SecretString \
+# Check the value (careful — this shows the actual credential in your terminal)
+aws ssm get-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --with-decryption \
+    --query Parameter.Value \
     --output text
 ```
 
 ---
 
-## Q: How do I update a secret value (e.g. rotate a LinkedIn token)?
+## Q: How do I update a parameter value (e.g. rotate a LinkedIn token)?
 
 ```bash
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/linkedin" \
-    --secret-string '{
+aws ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --type SecureString \
+    --value '{
         "access_token": "NEW_TOKEN",
         "author_urn": "urn:li:person:YOUR_ID"
-    }'
+    }' \
+    --overwrite
 ```
 
-The agent fetches secrets at runtime on every invocation — no re-deploy needed.
+The agent fetches parameters at runtime on every invocation — no re-deploy needed.
 
 ---
 
@@ -223,12 +219,12 @@ cdk destroy --all
 > aws dynamodb scan --table-name tech-news-agent-articles > backup.json
 > ```
 
-Then delete secrets manually (CDK does not manage secret deletion by default):
+Then delete parameters manually (CDK does not manage parameter deletion by default):
 ```bash
-aws secretsmanager delete-secret --secret-id "tech-news-agent/news-api" --recovery-window-in-days 7
-aws secretsmanager delete-secret --secret-id "tech-news-agent/linkedin" --recovery-window-in-days 7
-aws secretsmanager delete-secret --secret-id "tech-news-agent/instagram" --recovery-window-in-days 7
-aws secretsmanager delete-secret --secret-id "tech-news-agent/youtube" --recovery-window-in-days 7
+aws ssm delete-parameter --name "/tech-news-agent/news-api"
+aws ssm delete-parameter --name "/tech-news-agent/linkedin"
+aws ssm delete-parameter --name "/tech-news-agent/instagram"
+aws ssm delete-parameter --name "/tech-news-agent/youtube"
 ```
 
 ---

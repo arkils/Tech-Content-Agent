@@ -29,7 +29,7 @@ Notes:
     - This publisher targets text + link posts initially.
 
 TODO:
-    - Implement ``_get_credentials()`` using boto3 Secrets Manager.
+    - Implement ``_get_credentials()`` using boto3 SSM Parameter Store.
     - Implement OAuth2 token refresh using the stored refresh_token.
     - Implement ``publish()`` using the YouTube Data API v3 posts.insert.
     - Add optional video description variant for video uploads.
@@ -51,7 +51,7 @@ class YouTubePublisher(BasePublisher):
     Publishes formatted tech-news content as a YouTube Community Post.
 
     TODO:
-        - Inject boto3 Secrets Manager client for testability.
+        - Inject boto3 SSM client for testability.
         - Add Google API client dependency (``google-api-python-client``).
     """
 
@@ -81,7 +81,7 @@ class YouTubePublisher(BasePublisher):
         Create a YouTube Community Post via the Data API v3.
 
         TODO:
-            - Retrieve credentials from AWS Secrets Manager.
+            - Retrieve credentials from AWS SSM Parameter Store.
             - Refresh OAuth2 access token using the stored refresh_token.
             - POST to ``https://www.googleapis.com/youtube/v3/posts``.
         """

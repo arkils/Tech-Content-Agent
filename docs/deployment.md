@@ -9,7 +9,7 @@ in your AWS account and configuring all required secrets.
 
 1. [Prerequisites](#1-prerequisites)
 2. [One-time AWS account bootstrap](#2-one-time-aws-account-bootstrap)
-3. [Configure credentials in Secrets Manager](#3-configure-credentials-in-secrets-manager)
+3. [Configure credentials in SSM Parameter Store](#3-configure-credentials-in-aws-ssm-parameter-store)
 4. [Configure environment variables](#4-configure-environment-variables)
 5. [Deploy the infrastructure](#5-deploy-the-infrastructure)
 6. [Verify the deployment](#6-verify-the-deployment)
@@ -92,15 +92,15 @@ cdk bootstrap aws://<YOUR_ACCOUNT_ID>/us-east-1 -c owner=<your-name>
 
 ---
 
-## 3. Configure credentials in Secrets Manager
+## 3. Configure credentials in AWS SSM Parameter Store
 
-Platform credentials are stored as **AWS Secrets Manager** secrets —
+Platform credentials are stored as **AWS SSM Parameter Store** SecureString parameters —
 encrypted at rest with KMS and fetched at runtime by the Lambda.
 
 **Never store actual credential values in code, config files, or environment variables.**
 
-The secret names are defined as constants in `agent/config.py`.
-CDK creates each secret with a placeholder JSON value — you must replace each
+The parameter paths are defined as constants in `agent/config.py`.
+CDK creates each parameter with a placeholder JSON value — you must replace each
 value before the first run.
 
 ### 3a. News API key
@@ -108,9 +108,11 @@ value before the first run.
 Required — the agent uses this to fetch tech news articles.
 
 ```bash
-aws secretsmanager put-secret-value \
-    --secret-id "/tech-news-agent/news-api" \
-    --secret-string '{"api_key": "YOUR_NEWS_API_KEY_HERE"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/news-api" \
+    --type SecureString \
+    --value '{"api_key": "YOUR_NEWS_API_KEY_HERE"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
@@ -129,9 +131,11 @@ Obtain credentials from the [LinkedIn Developer Portal](https://www.linkedin.com
 4. Note your person URN (`urn:li:person:<id>`) from the `/v2/me` API.
 
 ```bash
-aws secretsmanager put-secret-value \
-    --secret-id "/tech-news-agent/linkedin" \
-    --secret-string '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --type SecureString \
+    --value '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
@@ -142,7 +146,7 @@ Expected JSON structure:
 }
 ```
 
-> **Note:** LinkedIn access tokens expire after 60 days — regenerate manually before expiry.
+> **Note:** LinkedIn access tokens expire after 60 days — regenerate manually before expiry and update the SSM parameter.
 
 ### 3c. Instagram credentials
 
@@ -155,9 +159,11 @@ Obtain credentials from the [Meta for Developers portal](https://developers.face
 4. Note your Instagram User ID.
 
 ```bash
-aws secretsmanager put-secret-value \
-    --secret-id "/tech-news-agent/instagram" \
-    --secret-string '{"access_token": "YOUR_TOKEN", "instagram_account_id": "YOUR_ID"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/instagram" \
+    --type SecureString \
+    --value '{"access_token": "YOUR_TOKEN", "instagram_account_id": "YOUR_ID"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
@@ -180,9 +186,11 @@ Obtain credentials from [Google Cloud Console](https://console.cloud.google.com/
 3. Run the OAuth flow once locally to obtain a refresh token.
 
 ```bash
-aws secretsmanager put-secret-value \
-    --secret-id "/tech-news-agent/youtube" \
-    --secret-string '{"client_id":"ID","client_secret":"SECRET","refresh_token":"TOKEN","channel_id":"CHANNEL"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/youtube" \
+    --type SecureString \
+    --value '{"client_id":"ID","client_secret":"SECRET","refresh_token":"TOKEN","channel_id":"CHANNEL"}' \
+    --overwrite
 ```
 
 Expected JSON structure:
@@ -195,13 +203,13 @@ Expected JSON structure:
 }
 ```
 
-### Verify secrets are in place
+### Verify parameters are in place
 
 ```bash
-# List all tech-news-agent secrets (names only, values hidden)
-aws secretsmanager list-secrets \
-    --filters Key=name,Values=/tech-news-agent \
-    --query "SecretList[].Name"
+# List all tech-news-agent parameters (names only, values hidden)
+aws ssm describe-parameters \
+    --parameter-filters Key=Name,Option=BeginsWith,Values=/tech-news-agent \
+    --query "Parameters[].Name"
 ```
 
 ---
@@ -266,9 +274,9 @@ before creating any resources.
 |-------|----------|---------| 
 | `TechNewsAgentStorage` | DynamoDB `tech-news-agent-articles` | Article deduplication with TTL |
 | `TechNewsAgentStorage` | DynamoDB `tech-news-agent-feeds` | Managed RSS feed registry |
-| `TechNewsAgentSecrets` | Secrets Manager × 4 | Platform credential stubs |
+| `TechNewsAgentSecrets` | SSM Parameter Store × 4 | Platform credential stubs |
 | `TechNewsAgent` | Lambda `tech-news-agent` | Pipeline handler (15 min, 512 MB) |
-| `TechNewsAgent` | IAM execution role | Least-privilege access to DynamoDB, Bedrock, Secrets Manager |
+| `TechNewsAgent` | IAM execution role | Least-privilege access to DynamoDB, Bedrock, SSM Parameter Store |
 | `TechNewsAgent` | CloudWatch log group `/aws/lambda/tech-news-agent` | Structured logs (30-day retention) |
 | `TechNewsAgentScheduler` | EventBridge rule `tech-news-agent-daily` | Mon–Fri trigger at 08:00 UTC |
 
@@ -323,16 +331,18 @@ cdk deploy --all -c owner=<your-name>
 
 CDK performs a CloudFormation change-set — only changed resources are updated.
 
-### Updating a secret value
+### Updating a parameter value
 
 ```bash
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/linkedin" \
-    --secret-string '{"access_token": "NEW_TOKEN", "author_urn": "urn:li:person:ID"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --type SecureString \
+    --value '{"access_token": "NEW_TOKEN", "author_urn": "urn:li:person:ID"}' \
+    --overwrite
 ```
 
-The agent fetches secrets at runtime, so no re-deploy is needed after
-updating a secret value.
+The agent fetches parameters at runtime, so no re-deploy is needed after
+updating a parameter value.
 
 ---
 
@@ -350,13 +360,13 @@ cdk destroy --all
 > aws dynamodb scan --table-name tech-news-agent-articles > articles-backup.json
 > ```
 
-### Delete secrets manually (CDK does not manage secrets by default)
+### Delete parameters manually (CDK does not manage parameter deletion by default)
 
 ```bash
-aws secretsmanager delete-secret --secret-id "tech-news-agent/news-api" --recovery-window-in-days 7
-aws secretsmanager delete-secret --secret-id "tech-news-agent/linkedin" --recovery-window-in-days 7
-aws secretsmanager delete-secret --secret-id "tech-news-agent/instagram" --recovery-window-in-days 7
-aws secretsmanager delete-secret --secret-id "tech-news-agent/youtube" --recovery-window-in-days 7
+aws ssm delete-parameter --name "/tech-news-agent/news-api"
+aws ssm delete-parameter --name "/tech-news-agent/linkedin"
+aws ssm delete-parameter --name "/tech-news-agent/instagram"
+aws ssm delete-parameter --name "/tech-news-agent/youtube"
 ```
 
 ---

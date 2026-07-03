@@ -136,11 +136,11 @@ class TechNewsAgentStack(cdk.Stack):
 
         self.function.add_to_role_policy(
             iam.PolicyStatement(
-                sid="SecretsManagerGetSecretValue",
+                sid="SSMGetParameter",
                 effect=iam.Effect.ALLOW,
-                actions=["secretsmanager:GetSecretValue"],
+                actions=["ssm:GetParameter"],
                 resources=[
-                    f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:/tech-news-agent/*"
+                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/tech-news-agent/*"
                 ],
             )
         )

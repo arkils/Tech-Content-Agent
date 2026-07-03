@@ -12,7 +12,7 @@ CloudFormation stack and can be deployed or destroyed independently.
 | `agent_stack.py` | `TechNewsAgentStack` | AgentCore agent, IAM roles, CloudWatch log groups |
 | `scheduler_stack.py` | `SchedulerStack` | EventBridge Scheduler rule and target |
 | `storage_stack.py` | `StorageStack` | DynamoDB table for processed articles |
-| `secrets_stack.py` | `SecretsStack` | Secrets Manager secrets and IAM grant policies |
+| `secrets_stack.py` | `SecretsStack` | SSM Parameter Store SecureString parameters |
 
 ## TODO
 

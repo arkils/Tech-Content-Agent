@@ -62,11 +62,11 @@ class Test<Platform>PublisherPublish:
 - Always inject the boto3 client via the constructor:
 
 ```python
-@moto.mock_secretsmanager
+@moto.mock_ssm
 def test_something():
-    client = boto3.client("secretsmanager", region_name="us-east-1")
-    client.create_secret(Name="tech-news-agent/linkedin", SecretString='{"access_token": "x"}')
-    publisher = LinkedInPublisher(secrets_client=client)
+    client = boto3.client("ssm", region_name="us-east-1")
+    client.put_parameter(Name="/tech-news-agent/linkedin", Value='{"access_token": "x", "author_urn": "urn:li:person:123"}', Type="SecureString")
+    publisher = LinkedInPublisher(ssm_client=client)
     ...
 ```
 

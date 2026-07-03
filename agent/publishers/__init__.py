@@ -7,7 +7,7 @@ This module is the single place where platform publishers are registered.
 Adding a new publisher requires only:
   1. Creating the publisher module in this package.
   2. Adding an entry to ``PUBLISHER_REGISTRY`` below.
-  3. Updating ``AgentConfig`` with the platform's Secrets Manager secret name.
+  3. Updating ``AgentConfig`` with the platform's SSM Parameter Store path.
 
 Supported platforms
 -------------------

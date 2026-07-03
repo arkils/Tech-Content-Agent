@@ -6,10 +6,10 @@ LinkedIn content publisher.
 Formats a ContentPackage as a professional LinkedIn post and delivers it
 via the LinkedIn Share API (``/rest/posts``).
 
-Credentials are fetched from AWS Secrets Manager at publish time.
-Secret name: ``AgentConfig.LINKEDIN_SECRET_NAME``.
+Credentials are fetched from AWS SSM Parameter Store at publish time.
+Parameter path: ``AgentConfig.LINKEDIN_PARAM_PATH``.
 
-Expected secret JSON structure::
+Expected parameter JSON structure::
 
     {
         "access_token": "<oauth2-access-token>",
@@ -20,8 +20,8 @@ LinkedIn API reference:
     https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
 
 Note:
-    LinkedIn OAuth2 tokens expire after 60 days.  Rotate the secret in
-    AWS Secrets Manager before expiry to avoid publish failures.
+    LinkedIn OAuth2 tokens expire after 60 days.  Update the SSM parameter
+    before expiry to avoid publish failures.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from agent.config import AgentConfig
 from agent.publishers.base import BasePublisher, ContentPackage, PublishResult
 
 if TYPE_CHECKING:
-    from mypy_boto3_secretsmanager import SecretsManagerClient
+    from mypy_boto3_ssm import SSMClient
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class LinkedInPublisher(BasePublisher):
     Publishes formatted tech-news content to LinkedIn.
 
     Args:
-        secrets_client: An optional pre-built ``boto3`` Secrets Manager client.
+        ssm_client: An optional pre-built ``boto3`` SSM client.
             Inject in tests to avoid real AWS calls.  Defaults to a new
             client using ``AgentConfig.aws_region``.
         dry_run: When ``True``, log the post instead of calling the LinkedIn API.
@@ -62,9 +62,9 @@ class LinkedInPublisher(BasePublisher):
 
     platform_name = "linkedin"
 
-    def __init__(self, secrets_client: Any | None = None, dry_run: bool | None = None) -> None:
-        self._secrets_client = secrets_client or boto3.client(
-            "secretsmanager", region_name=AgentConfig.aws_region
+    def __init__(self, ssm_client: Any | None = None, dry_run: bool | None = None) -> None:
+        self._ssm_client = ssm_client or boto3.client(
+            "ssm", region_name=AgentConfig.aws_region
         )
         self._dry_run = (not AgentConfig.enable_posting) if dry_run is None else dry_run
 
@@ -82,22 +82,22 @@ class LinkedInPublisher(BasePublisher):
         return post
 
     def _get_credentials(self) -> dict[str, str]:
-        """Fetch LinkedIn credentials from AWS Secrets Manager.
+        """Fetch LinkedIn credentials from AWS SSM Parameter Store.
 
         Returns:
             A dict with ``access_token`` and ``author_urn``.
 
         Raises:
-            KeyError: If required keys are missing from the secret.
-            Exception: On any Secrets Manager error.
+            KeyError: If required keys are missing from the parameter.
+            Exception: On any SSM error.
         """
-        response = self._secrets_client.get_secret_value(
-            SecretId=AgentConfig.LINKEDIN_SECRET_NAME
+        response = self._ssm_client.get_parameter(
+            Name=AgentConfig.LINKEDIN_PARAM_PATH, WithDecryption=True
         )
-        creds: dict[str, str] = json.loads(response["SecretString"])
+        creds: dict[str, str] = json.loads(response["Parameter"]["Value"])
         if "access_token" not in creds or "author_urn" not in creds:
             raise KeyError(
-                f"LinkedIn secret at '{AgentConfig.LINKEDIN_SECRET_NAME}' must contain "
+                f"LinkedIn parameter at '{AgentConfig.LINKEDIN_PARAM_PATH}' must contain "
                 "'access_token' and 'author_urn'."
             )
         return creds
@@ -124,11 +124,11 @@ class LinkedInPublisher(BasePublisher):
         try:
             creds = self._get_credentials()
         except Exception:
-            logger.exception("Failed to retrieve LinkedIn credentials from Secrets Manager")
+            logger.exception("Failed to retrieve LinkedIn credentials from SSM Parameter Store")
             return PublishResult(
                 platform=self.platform_name,
                 success=False,
-                error="Failed to retrieve credentials from Secrets Manager.",
+                error="Failed to retrieve credentials from SSM Parameter Store.",
             )
 
         headers = {

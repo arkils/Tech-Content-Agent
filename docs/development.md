@@ -134,16 +134,16 @@ from agent.publishers.base import BasePublisher, ContentPackage
 ### Secrets rule
 
 Never hard-code credential values.  Always:
-1. Define a secret name constant in `AgentConfig` (e.g. `LINKEDIN_SECRET_NAME`).
-2. Fetch the value at runtime with `boto3` Secrets Manager.
-3. Inject the `secrets_client` via constructor so tests can mock it.
+1. Define a parameter path constant in `AgentConfig` (e.g. `LINKEDIN_PARAM_PATH`).
+2. Fetch the value at runtime with `boto3` SSM Parameter Store.
+3. Inject the `ssm_client` via constructor so tests can mock it.
 
 ```python
 # Correct
-def _get_credentials(self, secrets_client) -> dict:
+def _get_credentials(self, ssm_client) -> dict:
     import json
-    response = secrets_client.get_secret_value(SecretId=AgentConfig.LINKEDIN_SECRET_NAME)
-    return json.loads(response["SecretString"])
+    response = ssm_client.get_parameter(Name=AgentConfig.LINKEDIN_PARAM_PATH, WithDecryption=True)
+    return json.loads(response["Parameter"]["Value"])
 
 # WRONG — never do this
 access_token = "AQICAHh..."  # ← hard-coded secret
@@ -171,7 +171,7 @@ Quick summary:
    - Subclass `BasePublisher`.
    - Set `platform_name = "<platform>"`.
    - Implement `format_content(package) → str`.
-   - Implement `publish(content) → PublishResult` (fetch credentials from Secrets Manager).
+   - Implement `publish(content) → PublishResult` (fetch credentials from SSM Parameter Store).
 
 2. **Add the prompt** — `agent/prompts/platforms/<platform>.md`
    - Document the Bedrock prompt template for this platform.
@@ -183,19 +183,19 @@ Quick summary:
    PUBLISHER_REGISTRY["<platform>"] = <Platform>Publisher
    ```
 
-4. **Add the secret name** — `agent/config.py`
+4. **Add the parameter path** — `agent/config.py`
    ```python
-   <PLATFORM>_SECRET_NAME: str = "tech-news-agent/<platform>"
+   <PLATFORM>_PARAM_PATH: str = "/tech-news-agent/<platform>"
    ```
 
 5. **Write tests** — `tests/publishers/test_<platform>.py`
    - Test `format_content()` independently.
    - Test `publish()` raises `NotImplementedError` (until implemented).
-   - Use `moto` to mock Secrets Manager when credentials are fetched.
+   - Use `moto` to mock SSM Parameter Store when credentials are fetched.
 
 6. **Update `agent/publishers/README.md`** — add a row to the platform table.
 
-7. **Create the AWS secret** — see [Secrets setup](deployment.md#3-configure-secrets-in-aws-secrets-manager).
+7. **Create the AWS parameter** — see [Credentials setup](deployment.md#3-configure-credentials-in-aws-ssm-parameter-store).
 
 8. **Enable it** — set `ENABLED_PUBLISHERS=...,<platform>` in your environment.
 
@@ -258,7 +258,7 @@ If you want to test against real AWS services locally:
 export AWS_PROFILE=my-dev-profile
 export AWS_REGION=us-east-1
 
-# Optionally point at a specific secrets manager endpoint (e.g. LocalStack)
+# Optionally point at a specific SSM endpoint (e.g. LocalStack)
 export AWS_ENDPOINT_URL=http://localhost:4566
 ```
 
@@ -273,10 +273,11 @@ pip install localstack
 # Start LocalStack
 localstack start
 
-# Create secrets in LocalStack
-aws --endpoint-url=http://localhost:4566 secretsmanager create-secret \
-    --name "tech-news-agent/linkedin" \
-    --secret-string '{"access_token": "local-fake-token", "author_urn": "urn:li:person:test"}'
+# Create parameters in LocalStack
+aws --endpoint-url=http://localhost:4566 ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --type SecureString \
+    --value '{"access_token": "local-fake-token", "author_urn": "urn:li:person:test"}'
 ```
 
 ---

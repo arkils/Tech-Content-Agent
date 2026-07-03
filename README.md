@@ -34,7 +34,7 @@ It demonstrates production patterns for building and deploying intelligent agent
 | Infrastructure as Code | AWS CDK (Python) |
 | Scheduling | Amazon EventBridge |
 | State store | Amazon DynamoDB |
-| Secrets | AWS Secrets Manager |
+| Secrets | AWS SSM Parameter Store |
 | Observability | Amazon CloudWatch |
 | AWS SDK | boto3 |
 | Testing | pytest, moto |
@@ -118,9 +118,9 @@ Use a comma-separated list of platform keys:
 | Key | Publisher | Credentials required |
 |-----|-----------|----------------------|
 | `blog` | `BlogPublisher` | None — writes Markdown to `BLOG_OUTPUT_PATH` |
-| `linkedin` | `LinkedInPublisher` | `tech-news-agent/linkedin` in Secrets Manager |
-| `instagram` | `InstagramPublisher` | `tech-news-agent/instagram` in Secrets Manager |
-| `youtube` | `YouTubePublisher` | `tech-news-agent/youtube` in Secrets Manager |
+| `linkedin` | `LinkedInPublisher` | `/tech-news-agent/linkedin` in SSM Parameter Store |
+| `instagram` | `InstagramPublisher` | `/tech-news-agent/instagram` in SSM Parameter Store |
+| `youtube` | `YouTubePublisher` | `/tech-news-agent/youtube` in SSM Parameter Store |
 
 ```bash
 # Default — safe for all environments, no credentials needed
@@ -140,7 +140,7 @@ See [agent/publishers/README.md](agent/publishers/README.md) for the publisher a
 ## Security
 
 - **No secrets are stored in this repository.**  
-- All credentials are managed via **AWS Secrets Manager**.
+- All credentials are managed via **AWS SSM Parameter Store** (SecureString).
 - AWS access in CI/CD uses **GitHub OIDC + IAM role assumption** — no static credentials.
 - IAM roles follow the **principle of least privilege**.
 

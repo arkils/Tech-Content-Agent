@@ -25,7 +25,7 @@ implement `format_content()` and `publish()` independently.
 1. Create a new module, e.g. `tiktok.py`, and subclass `BasePublisher`.
 2. Implement `format_content(package)` and `publish(content)`.
 3. Register the class in `__init__.py` under `PUBLISHER_REGISTRY`.
-4. Add the platform's Secrets Manager secret name to `agent/config.py`.
+4. Add the platform's SSM Parameter Store parameter path to `agent/config.py`.
 5. Add a platform-specific prompt in `agent/prompts/platforms/`.
 6. Add unit tests in `tests/publishers/`.
 
@@ -44,6 +44,6 @@ ENABLED_PUBLISHERS=blog  # default — no credentials required
 | Key | Class | Credentials required | API docs |
 |-----|-------|----------------------|----------|
 | `blog` | `BlogPublisher` | None | — |
-| `linkedin` | `LinkedInPublisher` | `tech-news-agent/linkedin` (Secrets Manager) | [LinkedIn Share API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api) |
-| `instagram` | `InstagramPublisher` | `tech-news-agent/instagram` (Secrets Manager) | [Meta Graph API](https://developers.facebook.com/docs/instagram-api/guides/content-publishing) |
-| `youtube` | `YouTubePublisher` | `tech-news-agent/youtube` (Secrets Manager) | [YouTube Data API v3](https://developers.google.com/youtube/v3/docs/posts/insert) |
+| `linkedin` | `LinkedInPublisher` | `/tech-news-agent/linkedin` (SSM Parameter Store) | [LinkedIn Share API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api) |
+| `instagram` | `InstagramPublisher` | `/tech-news-agent/instagram` (SSM Parameter Store) | [Meta Graph API](https://developers.facebook.com/docs/instagram-api/guides/content-publishing) |
+| `youtube` | `YouTubePublisher` | `/tech-news-agent/youtube` (SSM Parameter Store) | [YouTube Data API v3](https://developers.google.com/youtube/v3/docs/posts/insert) |

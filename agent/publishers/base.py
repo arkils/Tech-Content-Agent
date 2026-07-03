@@ -11,7 +11,7 @@ To add a new platform:
   1. Create a new module in this package (e.g. ``tiktok.py``).
   2. Subclass ``BasePublisher`` and implement ``format_content`` and ``publish``.
   3. Register the class in ``agent/publishers/__init__.py``.
-  4. Add a Secrets Manager entry for any required credentials.
+  4. Add an SSM Parameter Store entry for any required credentials.
   5. Add a platform prompt in ``agent/prompts/platforms/``.
 
 Data contracts (``ArticleSummary``, ``ContentPackage``, ``PublishResult``) are

@@ -138,17 +138,18 @@ import moto
 import pytest
 
 @pytest.fixture
-def secrets_client():
+def ssm_client():
     with moto.mock_aws():
-        client = boto3.client("secretsmanager", region_name="us-east-1")
-        client.create_secret(
-            Name="tech-news-agent/linkedin",
-            SecretString='{"access_token": "fake-token", "author_urn": "urn:li:person:123"}'
+        client = boto3.client("ssm", region_name="us-east-1")
+        client.put_parameter(
+            Name="/tech-news-agent/linkedin",
+            Value='{"access_token": "fake-token", "author_urn": "urn:li:person:123"}',
+            Type="SecureString",
         )
         yield client
 
-def test_publish_uses_credentials(secrets_client):
-    publisher = LinkedInPublisher(secrets_client=secrets_client)
+def test_publish_uses_credentials(ssm_client):
+    publisher = LinkedInPublisher(ssm_client=ssm_client)
     # ... test publish() once implemented
 ```
 
@@ -188,10 +189,11 @@ pip install localstack
 # Start
 localstack start
 
-# Create a secret in LocalStack
-aws --endpoint-url=http://localhost:4566 secretsmanager create-secret \
-    --name "tech-news-agent/linkedin" \
-    --secret-string '{"access_token": "local-token", "author_urn": "urn:li:person:test"}'
+# Create a parameter in LocalStack
+aws --endpoint-url=http://localhost:4566 ssm put-parameter \
+    --name "/tech-news-agent/linkedin" \
+    --type SecureString \
+    --value '{"access_token": "local-token", "author_urn": "urn:li:person:test"}'
 
 # Point your code at LocalStack
 export AWS_ENDPOINT_URL=http://localhost:4566
@@ -208,7 +210,7 @@ export AWS_REGION=us-east-1
 | Logging | `logger = logging.getLogger(__name__)` — never `print()` |
 | Imports | Absolute only: `from agent.publishers.base import ...` |
 | Type annotations | All function signatures must be fully annotated |
-| Secrets | Never hard-code values — use `AgentConfig.*_SECRET_NAME` |
+| Secrets | Never hard-code values — use `AgentConfig.*_PARAM_PATH` |
 | boto3 clients | Inject via constructor for testability |
 | Function length | ≤ 30 lines — extract helpers if longer |
 | AWS region | Default `us-east-1`, overridden by `AWS_REGION` env var |

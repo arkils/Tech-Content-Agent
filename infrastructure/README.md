@@ -21,7 +21,7 @@ infrastructure/
 | Articles Table | Amazon DynamoDB | Tracks processed articles to prevent duplicates |
 | IAM Roles | AWS IAM | Least-privilege execution roles |
 | Log Groups | Amazon CloudWatch | Structured agent logs |
-| Secrets | AWS Secrets Manager | LinkedIn credentials and API keys |
+| Secrets | AWS SSM Parameter Store | LinkedIn credentials and API keys |
 
 ## Prerequisites
 

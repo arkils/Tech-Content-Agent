@@ -5,7 +5,7 @@ Centralised configuration for the tech-news-agent.
 
 All non-sensitive configuration values are read from environment variables.
 Sensitive values (API keys, credentials) are fetched at runtime from
-AWS Secrets Manager — never stored here or in any committed file.
+AWS SSM Parameter Store (SecureString) — never stored here or in any committed file.
 
 Publisher selection
 -------------------
@@ -41,7 +41,7 @@ DynamoDB feed record schema (partition key ``feed_url``)::
     }
 
 TODO:
-    - Add helper to fetch secrets from AWS Secrets Manager.
+    - Add helper to fetch parameters from AWS SSM Parameter Store.
     - Validate required environment variables on startup.
     - Add support for local overrides via a `.env.local` file (dev only).
 """
@@ -132,12 +132,12 @@ class AgentConfig:
     enable_posting: bool = os.environ.get("ENABLE_POSTING", "false").lower() == "true"
 
     # -------------------------------------------------------------------------
-    # AWS Secrets Manager secret names
-    # Values are NEVER stored here — only the names used to look them up.
+    # SSM Parameter Store parameter paths
+    # Values are NEVER stored here — only the paths used to look them up.
     # Fetch at runtime with:
-    #   secretsmanager.get_secret_value(SecretId=AgentConfig.<PLATFORM>_SECRET_NAME)
+    #   ssm.get_parameter(Name=AgentConfig.<PLATFORM>_PARAM_PATH, WithDecryption=True)
     # -------------------------------------------------------------------------
-    NEWS_API_SECRET_NAME: str = "/tech-news-agent/news-api"
-    LINKEDIN_SECRET_NAME: str = "/tech-news-agent/linkedin"
-    INSTAGRAM_SECRET_NAME: str = "/tech-news-agent/instagram"
-    YOUTUBE_SECRET_NAME: str = "/tech-news-agent/youtube"
+    NEWS_API_PARAM_PATH: str = "/tech-news-agent/news-api"
+    LINKEDIN_PARAM_PATH: str = "/tech-news-agent/linkedin"
+    INSTAGRAM_PARAM_PATH: str = "/tech-news-agent/instagram"
+    YOUTUBE_PARAM_PATH: str = "/tech-news-agent/youtube"

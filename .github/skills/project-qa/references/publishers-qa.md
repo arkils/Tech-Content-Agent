@@ -27,7 +27,7 @@ agent/publishers/<platform>.py
 ================================
 <Platform> content publisher.
 
-Expected Secrets Manager JSON:
+Expected SSM Parameter Store JSON:
     {"key": "value"}
 
 TODO: implement _get_credentials() and publish()
@@ -62,11 +62,11 @@ PUBLISHER_REGISTRY: dict[str, type[BasePublisher]] = {
 }
 ```
 
-### 3. Add the secret name to config
+### 3. Add the parameter path to config
 
 In `agent/config.py`, inside `AgentConfig`:
 ```python
-<PLATFORM>_SECRET_NAME: str = "tech-news-agent/<platform>"
+<PLATFORM>_PARAM_PATH: str = "/tech-news-agent/<platform>"
 ```
 
 ### 4. Add the Bedrock prompt
@@ -90,16 +90,14 @@ Minimum tests:
 
 Add a row to the platform table.
 
-### 7. Create the AWS secret
+### 7. Create the AWS parameter
 
 ```bash
-aws secretsmanager create-secret \
-    --name "tech-news-agent/<platform>" \
-    --description "<Platform> credentials for tech-news-agent"
-
-aws secretsmanager put-secret-value \
-    --secret-id "tech-news-agent/<platform>" \
-    --secret-string '{"key": "value"}'
+aws ssm put-parameter \
+    --name "/tech-news-agent/<platform>" \
+    --description "<Platform> credentials for tech-news-agent" \
+    --type SecureString \
+    --value '{"key": "value"}'
 ```
 
 ### 8. Enable it
@@ -143,7 +141,7 @@ The output directory defaults to `output/posts` (set via `BLOG_OUTPUT_PATH` env 
 4. Truncates to 3,000 characters (LinkedIn's limit) with `...` if needed.
 
 `publish()` is **not yet implemented** — it raises `NotImplementedError`.
-The TODO in the file describes what's needed: Secrets Manager fetch → LinkedIn Share API POST.
+The TODO in the file describes what's needed: SSM Parameter Store fetch → LinkedIn Share API POST.
 
 ---
 
@@ -180,18 +178,18 @@ def get_active_publishers(enabled: list[str]) -> list[BasePublisher]:
 Inject the boto3 client via constructor so tests can mock it:
 
 ```python
-def __init__(self, secrets_client=None):
+def __init__(self, ssm_client=None):
     import boto3
-    self._secrets = secrets_client or boto3.client(
-        "secretsmanager", region_name=AgentConfig.aws_region
+    self._ssm = ssm_client or boto3.client(
+        "ssm", region_name=AgentConfig.aws_region
     )
 
 def _get_credentials(self) -> dict:
     import json
-    response = self._secrets.get_secret_value(
-        SecretId=AgentConfig.LINKEDIN_SECRET_NAME
+    response = self._ssm.get_parameter(
+        Name=AgentConfig.LINKEDIN_PARAM_PATH, WithDecryption=True
     )
-    return json.loads(response["SecretString"])
+    return json.loads(response["Parameter"]["Value"])
 ```
 
 Then in `publish()`:

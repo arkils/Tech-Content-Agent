@@ -31,7 +31,7 @@ agent which documentation files need updating. Rules cover:
 |--------|-------------|
 | `bootstrap.sh` | One-command environment setup (venv, pip install, CDK bootstrap) |
 | `deploy.sh` | Wrapper around `cdk deploy --all` with pre-flight checks |
-| `seed_secrets.sh` | Creates Secrets Manager secret stubs (no values) in a target account |
+| `seed_secrets.sh` | Creates SSM Parameter Store SecureString stubs (no values) in a target account |
 | `run_local.py` | Invoke the agent pipeline locally against mocked AWS services |
 
 ## TODO

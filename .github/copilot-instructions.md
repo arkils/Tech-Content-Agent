@@ -69,7 +69,7 @@ EventBridge → AgentCore → news_pipeline workflow
 
 ### Secrets
 - **Never** hard-code credentials, tokens, or keys — not even placeholder strings.
-- Use `AgentConfig.*_SECRET_NAME` constants to look up secrets at runtime from AWS Secrets Manager.
+- Use `AgentConfig.*_PARAM_PATH` constants to look up credentials at runtime from AWS SSM Parameter Store (SecureString).
 - Use environment variables only for non-sensitive configuration.
 
 ### AWS
@@ -91,7 +91,7 @@ class MyPlatformPublisher(BasePublisher):
 
     def publish(self, content: str) -> PublishResult:
         # Deliver content to the platform API
-        # Fetch credentials from Secrets Manager here
+        # Fetch credentials from SSM Parameter Store here
         ...
 ```
 

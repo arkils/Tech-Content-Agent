@@ -84,16 +84,16 @@ Activate them in the [Amazon Bedrock console](https://console.aws.amazon.com/bed
 
 ---
 
-## Q: What are the Secrets Manager secret names?
+## Q: What are the SSM Parameter Store parameter paths?
 
-Defined as constants in `AgentConfig` — these are names, never values:
+Defined as constants in `AgentConfig` — these are paths, never values:
 
-| Constant | Secret name | Purpose |
-|----------|-------------|---------|
-| `AgentConfig.NEWS_API_SECRET_NAME` | `tech-news-agent/news-api` | News API key |
-| `AgentConfig.LINKEDIN_SECRET_NAME` | `tech-news-agent/linkedin` | LinkedIn access token + author URN |
-| `AgentConfig.INSTAGRAM_SECRET_NAME` | `tech-news-agent/instagram` | Instagram access token + account ID |
-| `AgentConfig.YOUTUBE_SECRET_NAME` | `tech-news-agent/youtube` | Google OAuth2 credentials + channel ID |
+| Constant | Parameter path | Purpose |
+|----------|----------------|--------|
+| `AgentConfig.NEWS_API_PARAM_PATH` | `/tech-news-agent/news-api` | News API key |
+| `AgentConfig.LINKEDIN_PARAM_PATH` | `/tech-news-agent/linkedin` | LinkedIn access token + author URN |
+| `AgentConfig.INSTAGRAM_PARAM_PATH` | `/tech-news-agent/instagram` | Instagram access token + account ID |
+| `AgentConfig.YOUTUBE_PARAM_PATH` | `/tech-news-agent/youtube` | Google OAuth2 credentials + channel ID |
 
 ---
 
@@ -134,8 +134,8 @@ class AgentConfig:
 ```
 
 For **sensitive** values (credentials, tokens, keys):
-- Add a `SECRET_NAME` constant: `MY_PLATFORM_SECRET_NAME: str = "tech-news-agent/my-platform"`
-- Create the secret in AWS Secrets Manager.
+- Add a `PARAM_PATH` constant: `MY_PLATFORM_PARAM_PATH: str = "/tech-news-agent/my-platform"`
+- Create the parameter in AWS SSM Parameter Store (SecureString).
 - Fetch the value at runtime with `boto3`.
 - **Never** store the actual value in code or environment variables.
 

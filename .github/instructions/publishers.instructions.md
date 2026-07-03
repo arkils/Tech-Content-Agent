@@ -18,14 +18,14 @@ agent/publishers/<platform>.py
 
 <One paragraph explaining the platform, API used, and credential requirements.>
 
-Expected Secrets Manager JSON structure::
+Expected SSM Parameter Store JSON structure::
 
     {
         "key_name": "<value-description>"
     }
 
 TODO:
-    - Implement _get_credentials() using boto3 Secrets Manager.
+    - Implement _get_credentials() using boto3 SSM Parameter Store.
     - Implement publish() using the <Platform> API.
     - Add token refresh if applicable.
 """
@@ -52,7 +52,7 @@ class <Platform>Publisher(BasePublisher):
     def publish(self, content: str) -> PublishResult:
         """
         Deliver content to <Platform>.
-        TODO: Retrieve credentials from AWS Secrets Manager.
+        TODO: Retrieve credentials from AWS SSM Parameter Store.
         """
         raise NotImplementedError(...)
 ```
@@ -60,13 +60,13 @@ class <Platform>Publisher(BasePublisher):
 ## Credential retrieval pattern
 
 ```python
-def _get_credentials(self, secrets_client) -> dict:
-    """Fetch platform credentials from AWS Secrets Manager."""
+def _get_credentials(self, ssm_client) -> dict:
+    """Fetch platform credentials from AWS SSM Parameter Store."""
     import json
-    response = secrets_client.get_secret_value(
-        SecretId=AgentConfig.<PLATFORM>_SECRET_NAME
+    response = ssm_client.get_parameter(
+        Name=AgentConfig.<PLATFORM>_PARAM_PATH, WithDecryption=True
     )
-    return json.loads(response["SecretString"])
+    return json.loads(response["Parameter"]["Value"])
 ```
 
 - **Never** cache credentials across invocations — always fetch fresh.
@@ -97,10 +97,10 @@ PUBLISHER_REGISTRY: dict[str, type[BasePublisher]] = {
 }
 ```
 
-And add the secret name to `AgentConfig` in `agent/config.py`:
+And add the parameter path to `AgentConfig` in `agent/config.py`:
 
 ```python
-<PLATFORM>_SECRET_NAME: str = "tech-news-agent/<platform>"
+<PLATFORM>_PARAM_PATH: str = "/tech-news-agent/<platform>"
 ```
 
 ## Required files per new platform
@@ -109,4 +109,4 @@ And add the secret name to `AgentConfig` in `agent/config.py`:
 2. `agent/prompts/platforms/<platform>.md` — Bedrock prompt template
 3. `tests/publishers/test_<platform>.py` — unit tests
 4. Entry in `agent/publishers/README.md` platform table
-5. Secret name in `agent/config.py`
+5. Parameter path in `agent/config.py`
