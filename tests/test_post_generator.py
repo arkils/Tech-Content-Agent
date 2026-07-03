@@ -11,6 +11,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import io
+import json
+
 import pytest
 
 from agent.models import ArticleSummary, ContentPackage
@@ -125,6 +128,24 @@ class TestPostGeneratorRun:
         call_kwargs = client.converse.call_args[1]
         prompt = call_kwargs["messages"][0]["content"][0]["text"]
         assert "Quantum Computing Milestone" in prompt
+
+    def test_uses_configured_model_id(self) -> None:
+        client = MagicMock()
+        client.invoke_model.return_value = {
+            "body": io.BytesIO(
+                json.dumps(
+                    {"output": {"message": {"content": [{"text": "Post text."}]}}}
+                ).encode("utf-8")
+            )
+        }
+        generator = PostGenerator(bedrock_client=client)
+        generator._config = type("Config", (), {"bedrock_model_id": "amazon.nova-lite-v1:0"})()
+
+        result = generator.run([_make_summary(1)], platform="linkedin")
+
+        assert result.raw_post == "Post text."
+        client.invoke_model.assert_called_once()
+        assert client.invoke_model.call_args.kwargs["modelId"] == "amazon.nova-lite-v1:0"
 
     def test_raises_on_no_text_in_bedrock_response(self) -> None:
         client = MagicMock()

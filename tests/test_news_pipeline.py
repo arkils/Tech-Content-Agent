@@ -10,6 +10,7 @@ end-to-end so each test verifies the full orchestration logic.
 from __future__ import annotations
 
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import boto3
@@ -217,6 +218,34 @@ class TestPipelineEarlyExitNoNewArticles:
             ).run()
 
         assert result.articles_new == 0
+
+    def test_force_no_new_articles_allows_duplicate_processing(self) -> None:
+        ddb = boto3.client("dynamodb", region_name="us-east-1")
+        _make_dynamodb_tables(ddb)
+        for url in ["https://example.com/article-1", "https://example.com/article-2"]:
+            ddb.put_item(
+                TableName=AgentConfig.dynamodb_table_name,
+                Item={
+                    "url": {"S": url},
+                    "title": {"S": "Seen"},
+                    "source": {"S": "Test"},
+                    "processed_at": {"S": "2026-07-01T00:00:00+00:00"},
+                    "ttl": {"N": "9999999999"},
+                },
+            )
+        bedrock = _make_bedrock_client(_BEDROCK_SUMMARIES, _BEDROCK_POST)
+
+        with patch.dict(os.environ, {"FORCE_NO_NEW_ARTICLES": "true"}, clear=False):
+            with patch("agent.tools.news_fetcher.feedparser.parse", return_value=_FEED_RESPONSE):
+                with patch("agent.tools.bedrock_summariser.ArticleSummariser._call_bedrock") as mock_call:
+                    mock_call.return_value = json.dumps(_BEDROCK_SUMMARIES)
+                    with patch("agent.tools.post_generator.PostGenerator._call_bedrock") as mock_post_call:
+                        mock_post_call.return_value = _BEDROCK_POST
+                        result = NewsPipeline(dynamodb_client=ddb, bedrock_client=bedrock).run()
+
+        assert result.skipped is False
+        assert result.summaries_produced == len(_BEDROCK_SUMMARIES)
+        assert result.articles_new == 2
 
 
 # ---------------------------------------------------------------------------

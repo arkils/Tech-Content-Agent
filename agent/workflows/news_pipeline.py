@@ -90,15 +90,15 @@ class NewsPipeline:
         self,
         dynamodb_client: object,
         bedrock_client: object,
-        config: type[AgentConfig] = AgentConfig,
+        config: type[AgentConfig] | AgentConfig = AgentConfig,
         platform: str = "linkedin",
     ) -> None:
-        self._config = config
+        self._config = config() if isinstance(config, type) else config
         self._platform = platform
-        self._fetcher = NewsFetcher(dynamodb_client=dynamodb_client, config=config)
-        self._deduplicator = ArticleDeduplicator(dynamodb_client=dynamodb_client, config=config)
-        self._summariser = ArticleSummariser(bedrock_client=bedrock_client, config=config)
-        self._generator = PostGenerator(bedrock_client=bedrock_client, config=config)
+        self._fetcher = NewsFetcher(dynamodb_client=dynamodb_client, config=self._config)
+        self._deduplicator = ArticleDeduplicator(dynamodb_client=dynamodb_client, config=self._config)
+        self._summariser = ArticleSummariser(bedrock_client=bedrock_client, config=self._config)
+        self._generator = PostGenerator(bedrock_client=bedrock_client, config=self._config)
 
     # ------------------------------------------------------------------
     # Public API
@@ -128,7 +128,15 @@ class NewsPipeline:
         new_articles = self._deduplicator.filter_new(articles)
         result.articles_new = len(new_articles)
 
-        if not new_articles:
+        if self._config.force_no_new_articles:
+            logger.info(
+                "FORCE_NO_NEW_ARTICLES is enabled — bypassing deduplication and forcing processing"
+            )
+            # Treat the run as if all fetched articles were new so the pipeline
+            # can reproduce the content-posting flow for testing.
+            new_articles = articles
+            result.articles_new = len(new_articles)
+        elif not new_articles:
             logger.info("No new articles — pipeline exiting early")
             result.skipped = True
             result.skip_reason = "No new articles after deduplication"

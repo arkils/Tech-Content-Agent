@@ -57,6 +57,11 @@ def _parse_list(env_var: str, default: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _get_bool_env(env_var: str, default: bool = False) -> bool:
+    """Read a boolean environment variable as a runtime-resolved flag."""
+    return os.environ.get(env_var, str(default)).lower() == "true"
+
+
 # ---------------------------------------------------------------------------
 # Hardcoded fallback RSS feeds used when DynamoDB and env var are both absent.
 # These are well-known, stable tech news sources.
@@ -88,7 +93,7 @@ class AgentConfig:
 
     aws_region: str = os.environ.get("AWS_REGION", "us-east-1")
     bedrock_model_id: str = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        "BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0"
     )
     dynamodb_table_name: str = os.environ.get("DYNAMODB_TABLE_NAME", "tech-news-agent-articles")
     log_level: str = os.environ.get("LOG_LEVEL", "INFO")
@@ -131,6 +136,12 @@ class AgentConfig:
     #: Defaults to False — posts are logged to CloudWatch but not delivered.
     enable_posting: bool = os.environ.get("ENABLE_POSTING", "false").lower() == "true"
 
+    @property
+    def force_no_new_articles(self) -> bool:
+        """Testing override. When set to true, the pipeline will ignore deduplication
+        and continue processing even when the articles were already seen before."""
+        return _get_bool_env("FORCE_NO_NEW_ARTICLES", False)
+
     # -------------------------------------------------------------------------
     # SSM Parameter Store parameter paths
     # Values are NEVER stored here — only the paths used to look them up.
@@ -141,3 +152,4 @@ class AgentConfig:
     LINKEDIN_PARAM_PATH: str = "/tech-news-agent/linkedin"
     INSTAGRAM_PARAM_PATH: str = "/tech-news-agent/instagram"
     YOUTUBE_PARAM_PATH: str = "/tech-news-agent/youtube"
+    OPENAI_API_PARAM_PATH: str = "/tech-news-agent/openai"

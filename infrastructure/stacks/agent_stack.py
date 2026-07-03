@@ -71,6 +71,8 @@ class TechNewsAgentStack(cdk.Stack):
         feeds_table: dynamodb.Table,
         enabled_publishers: str = "blog,linkedin",
         enable_posting: bool = False,
+        bedrock_model_id: str = "amazon.nova-lite-v1:0",
+        force_no_new_articles: bool = False,
         **kwargs: object,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -113,6 +115,8 @@ class TechNewsAgentStack(cdk.Stack):
                 "NEWS_FEEDS_TABLE": feeds_table.table_name,
                 "ENABLED_PUBLISHERS": enabled_publishers,
                 "ENABLE_POSTING": "true" if enable_posting else "false",
+                "BEDROCK_MODEL_ID": bedrock_model_id,
+                "FORCE_NO_NEW_ARTICLES": "true" if force_no_new_articles else "false",
                 "LOG_LEVEL": "INFO",
             },
         )
@@ -129,7 +133,7 @@ class TechNewsAgentStack(cdk.Stack):
                 effect=iam.Effect.ALLOW,
                 actions=["bedrock:InvokeModel"],
                 resources=[
-                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0"
+                    f"arn:aws:bedrock:{self.region}::foundation-model/{bedrock_model_id}"
                 ],
             )
         )

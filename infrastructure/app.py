@@ -39,6 +39,8 @@ app = cdk.App()
 owner: str = app.node.try_get_context("owner") or "unset"
 enabled_publishers: str = app.node.try_get_context("enabled_publishers") or "blog,linkedin"
 enable_posting: bool = app.node.try_get_context("enable_posting") == "true"
+bedrock_model_id: str = app.node.try_get_context("bedrock_model_id") or "amazon.nova-lite-v1:0"
+force_no_new_articles: bool = app.node.try_get_context("force_no_new_articles") == "true"
 cdk.Tags.of(app).add("Project", "tech-news-agent")
 cdk.Tags.of(app).add("ManagedBy", "cdk")
 cdk.Tags.of(app).add("Owner", owner)
@@ -56,6 +58,8 @@ agent = TechNewsAgentStack(
     feeds_table=storage.feeds_table,
     enabled_publishers=enabled_publishers,
     enable_posting=enable_posting,
+    bedrock_model_id=bedrock_model_id,
+    force_no_new_articles=force_no_new_articles,
 )
 
 scheduler = SchedulerStack(

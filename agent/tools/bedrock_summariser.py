@@ -44,6 +44,10 @@ import json
 import logging
 import re
 from pathlib import Path
+from typing import Any
+
+import boto3
+import requests
 
 from agent.config import AgentConfig
 from agent.models import Article, ArticleSummary
@@ -114,28 +118,66 @@ class ArticleSummariser:
         return self._prompt_template.replace("{{ARTICLES}}", articles_text)
 
     def _call_bedrock(self, prompt: str) -> str:
-        """
-        Call Bedrock ``converse`` and return the assistant message text.
+        """Call Bedrock first and fall back to OpenAI if Bedrock fails."""
+        try:
+            if self._config.bedrock_model_id.startswith("amazon.nova"):
+                request_body = json.dumps(
+                    {
+                        "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                        "inferenceConfig": {"max_new_tokens": 2_000, "temperature": 0.2},
+                    }
+                )
+                response = self._bedrock.invoke_model(
+                    modelId=self._config.bedrock_model_id,
+                    body=request_body,
+                    contentType="application/json",
+                    accept="application/json",
+                )
+                response_body = response.get("body")
+                if hasattr(response_body, "read"):
+                    payload = json.loads(response_body.read().decode("utf-8"))
+                else:
+                    payload = json.loads(response_body.decode("utf-8"))
+                return _extract_text(payload)
 
-        Raises:
-            RuntimeError: If the Bedrock response has no text content.
-        """
-        response = self._bedrock.converse(
-            modelId=self._config.bedrock_model_id,
-            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            response = self._bedrock.converse(
+                modelId=self._config.bedrock_model_id,
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+            )
+            return _extract_text(response)
+        except Exception as exc:
+            logger.warning("Bedrock request failed, falling back to OpenAI: %s", exc)
+            return self._call_openai(prompt)
+
+    def _call_openai(self, prompt: str) -> str:
+        """Call OpenAI Chat Completions using an SSM-stored API key."""
+        ssm_client = boto3.client("ssm", region_name=self._config.aws_region)
+        response = ssm_client.get_parameter(
+            Name=AgentConfig.OPENAI_API_PARAM_PATH, WithDecryption=True
         )
+        creds = _parse_openai_credentials(response["Parameter"]["Value"])
+        api_key = str(creds.get("api_key", "")).strip()
+        if not api_key:
+            raise RuntimeError("OpenAI API key is missing from SSM parameter store")
 
-        output = response.get("output", {})
-        message = output.get("message", {})
-        content = message.get("content", [])
-
-        for block in content:
-            if block.get("text"):
-                return block["text"]
-
-        raise RuntimeError(
-            f"Bedrock converse returned no text content. Full response: {response}"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": "gpt-4.1-mini",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+        }
+        http_response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60,
         )
+        http_response.raise_for_status()
+        data = http_response.json()
+        return data["choices"][0]["message"]["content"]
 
     def _parse_response(self, raw: str) -> list[ArticleSummary]:
         """
@@ -216,6 +258,58 @@ def _serialise_articles(articles: list[Article]) -> str:
             lines.append(f"   Content: {snippet}")
         lines.append("")
     return "\n".join(lines)
+
+
+def _extract_text(payload: dict) -> str:
+    """Extract assistant text from either Converse or InvokeModel responses."""
+    output = payload.get("output", {})
+    message = output.get("message", {})
+    content = message.get("content", [])
+    for block in content:
+        if isinstance(block, dict) and block.get("text"):
+            return block["text"]
+    if isinstance(payload.get("outputText"), str):
+        return payload["outputText"]
+    raise RuntimeError(
+        f"Bedrock returned no text content. Full response: {payload}"
+    )
+
+
+def _parse_openai_credentials(value: Any) -> dict[str, str]:
+    """Parse OpenAI credentials from either JSON or a raw string value."""
+    if isinstance(value, dict):
+        return {key: str(val) for key, val in value.items() if isinstance(val, (str, int, float))}
+
+    if not isinstance(value, str):
+        return {}
+
+    text = value.strip()
+    if not text:
+        return {}
+
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return {key: str(val) for key, val in data.items() if isinstance(val, (str, int, float))}
+    except json.JSONDecodeError:
+        pass
+
+    cleaned = "".join(ch for ch in text if ch.isprintable() or ch in "\t\r\n")
+    try:
+        data = json.loads(cleaned)
+        if isinstance(data, dict):
+            return {key: str(val) for key, val in data.items() if isinstance(val, (str, int, float))}
+    except json.JSONDecodeError:
+        pass
+
+    match = re.search(r'"api_key"\s*:\s*"([^"]*)"', cleaned)
+    if match:
+        return {"api_key": match.group(1)}
+
+    if text.startswith("sk"):
+        return {"api_key": text}
+
+    return {}
 
 
 def _extract_json_array(text: str) -> str:

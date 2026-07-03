@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+import io
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -147,6 +148,38 @@ class TestArticleSummariserRun:
 
         call_kwargs = client.converse.call_args[1]
         assert call_kwargs["modelId"] == AgentConfig.bedrock_model_id
+
+    def test_uses_configured_model_id(self) -> None:
+        from agent.config import AgentConfig
+
+        client = MagicMock()
+        client.invoke_model.return_value = {
+            "body": io.BytesIO(
+                json.dumps(
+                    {
+                        "output": {
+                            "message": {
+                                "content": [{"text": json.dumps([{
+                                    "title": "Article 1",
+                                    "url": "https://example.com/article-1",
+                                    "summary": "A great summary.",
+                                    "relevance_score": 4,
+                                    "duplicate_of": None,
+                                }])}]}
+                            }
+                        }
+                    }
+                ).encode("utf-8")
+            )
+        }
+        summariser = ArticleSummariser(bedrock_client=client)
+        summariser._config = type("Config", (), {"bedrock_model_id": "amazon.nova-lite-v1:0"})()
+
+        result = summariser.run([_make_article(1)])
+
+        assert len(result) == 1
+        client.invoke_model.assert_called_once()
+        assert client.invoke_model.call_args.kwargs["modelId"] == "amazon.nova-lite-v1:0"
 
     def test_raises_on_no_text_in_response(self) -> None:
         client = MagicMock()
