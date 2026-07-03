@@ -124,12 +124,20 @@ class AgentConfig:
     blog_output_path: str = os.environ.get("BLOG_OUTPUT_PATH", "output/posts")
 
     # -------------------------------------------------------------------------
-    # AWS SSM Parameter Store parameter paths
-    # Values are NEVER stored here — only the paths used to look them up.
-    # Credentials are stored as SecureString parameters; fetch with
-    # ssm.get_parameter(Name=..., WithDecryption=True) at runtime.
+    # Posting control
     # -------------------------------------------------------------------------
-    NEWS_API_PARAM_PATH: str = "/tech-news-agent/news-api"
-    LINKEDIN_PARAM_PATH: str = "/tech-news-agent/linkedin"
-    INSTAGRAM_PARAM_PATH: str = "/tech-news-agent/instagram"
-    YOUTUBE_PARAM_PATH: str = "/tech-news-agent/youtube"
+    #: Master switch for social-media publishing.
+    #: Set ENABLE_POSTING=true to allow publishers to call external APIs.
+    #: Defaults to False — posts are logged to CloudWatch but not delivered.
+    enable_posting: bool = os.environ.get("ENABLE_POSTING", "false").lower() == "true"
+
+    # -------------------------------------------------------------------------
+    # AWS Secrets Manager secret names
+    # Values are NEVER stored here — only the names used to look them up.
+    # Fetch at runtime with:
+    #   secretsmanager.get_secret_value(SecretId=AgentConfig.<PLATFORM>_SECRET_NAME)
+    # -------------------------------------------------------------------------
+    NEWS_API_SECRET_NAME: str = "/tech-news-agent/news-api"
+    LINKEDIN_SECRET_NAME: str = "/tech-news-agent/linkedin"
+    INSTAGRAM_SECRET_NAME: str = "/tech-news-agent/instagram"
+    YOUTUBE_SECRET_NAME: str = "/tech-news-agent/youtube"

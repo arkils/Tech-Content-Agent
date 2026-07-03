@@ -9,7 +9,7 @@ in your AWS account and configuring all required secrets.
 
 1. [Prerequisites](#1-prerequisites)
 2. [One-time AWS account bootstrap](#2-one-time-aws-account-bootstrap)
-3. [Configure credentials in SSM Parameter Store](#3-configure-credentials-in-ssm-parameter-store)
+3. [Configure credentials in Secrets Manager](#3-configure-credentials-in-secrets-manager)
 4. [Configure environment variables](#4-configure-environment-variables)
 5. [Deploy the infrastructure](#5-deploy-the-infrastructure)
 6. [Verify the deployment](#6-verify-the-deployment)
@@ -92,15 +92,15 @@ cdk bootstrap aws://<YOUR_ACCOUNT_ID>/us-east-1 -c owner=<your-name>
 
 ---
 
-## 3. Configure credentials in SSM Parameter Store
+## 3. Configure credentials in Secrets Manager
 
-Platform credentials are stored as **SSM Parameter Store SecureString** parameters —
-encrypted at rest with KMS, free to use, no per-secret monthly fee.
+Platform credentials are stored as **AWS Secrets Manager** secrets —
+encrypted at rest with KMS and fetched at runtime by the Lambda.
 
 **Never store actual credential values in code, config files, or environment variables.**
 
-The parameter paths are defined as constants in `agent/config.py`.
-CDK creates the parameters with a `"placeholder"` value — you must replace each
+The secret names are defined as constants in `agent/config.py`.
+CDK creates each secret with a placeholder JSON value — you must replace each
 value before the first run.
 
 ### 3a. News API key
@@ -108,11 +108,9 @@ value before the first run.
 Required — the agent uses this to fetch tech news articles.
 
 ```bash
-aws ssm put-parameter \
-    --name "/tech-news-agent/news-api" \
-    --type "SecureString" \
-    --value '{"api_key": "YOUR_NEWS_API_KEY_HERE"}' \
-    --overwrite
+aws secretsmanager put-secret-value \
+    --secret-id "/tech-news-agent/news-api" \
+    --secret-string '{"api_key": "YOUR_NEWS_API_KEY_HERE"}'
 ```
 
 Expected JSON structure:
@@ -131,11 +129,9 @@ Obtain credentials from the [LinkedIn Developer Portal](https://www.linkedin.com
 4. Note your person URN (`urn:li:person:<id>`) from the `/v2/me` API.
 
 ```bash
-aws ssm put-parameter \
-    --name "/tech-news-agent/linkedin" \
-    --type "SecureString" \
-    --value '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}' \
-    --overwrite
+aws secretsmanager put-secret-value \
+    --secret-id "/tech-news-agent/linkedin" \
+    --secret-string '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}'
 ```
 
 Expected JSON structure:
@@ -159,11 +155,9 @@ Obtain credentials from the [Meta for Developers portal](https://developers.face
 4. Note your Instagram User ID.
 
 ```bash
-aws ssm put-parameter \
-    --name "/tech-news-agent/instagram" \
-    --type "SecureString" \
-    --value '{"access_token": "YOUR_TOKEN", "instagram_account_id": "YOUR_ID"}' \
-    --overwrite
+aws secretsmanager put-secret-value \
+    --secret-id "/tech-news-agent/instagram" \
+    --secret-string '{"access_token": "YOUR_TOKEN", "instagram_account_id": "YOUR_ID"}'
 ```
 
 Expected JSON structure:
@@ -186,11 +180,9 @@ Obtain credentials from [Google Cloud Console](https://console.cloud.google.com/
 3. Run the OAuth flow once locally to obtain a refresh token.
 
 ```bash
-aws ssm put-parameter \
-    --name "/tech-news-agent/youtube" \
-    --type "SecureString" \
-    --value '{"client_id":"ID","client_secret":"SECRET","refresh_token":"TOKEN","channel_id":"CHANNEL"}' \
-    --overwrite
+aws secretsmanager put-secret-value \
+    --secret-id "/tech-news-agent/youtube" \
+    --secret-string '{"client_id":"ID","client_secret":"SECRET","refresh_token":"TOKEN","channel_id":"CHANNEL"}'
 ```
 
 Expected JSON structure:
@@ -203,13 +195,13 @@ Expected JSON structure:
 }
 ```
 
-### Verify parameters are in place
+### Verify secrets are in place
 
 ```bash
-# List all tech-news-agent parameters (names only, values hidden)
-aws ssm get-parameters-by-path \
-    --path "/tech-news-agent" \
-    --query "Parameters[].Name"
+# List all tech-news-agent secrets (names only, values hidden)
+aws secretsmanager list-secrets \
+    --filters Key=name,Values=/tech-news-agent \
+    --query "SecretList[].Name"
 ```
 
 ---
@@ -237,6 +229,10 @@ export DYNAMODB_TABLE_NAME=tech-news-agent-articles
 export BLOG_OUTPUT_PATH=output/posts
 ```
 
+> **`ENABLE_POSTING`** is intentionally **not** set here — it is controlled via
+> a CDK context flag at deploy time (see Section 5) so it cannot accidentally
+> be left on in a shell environment.
+
 ---
 
 ## 5. Deploy the infrastructure
@@ -248,12 +244,18 @@ cdk synth -c owner=<your-name>
 # 2. Review what will be created
 cdk diff -c owner=<your-name>
 
-# 3. Deploy all stacks
+# 3. Deploy (posting disabled — posts logged to CloudWatch only)
 cdk deploy --all -c owner=<your-name>
+
+# 4. Deploy with live posting enabled
+cdk deploy --all -c owner=<your-name> -c enable_posting=true
 
 # Or deploy a single stack
 cdk deploy TechNewsAgentStorage -c owner=<your-name>
 ```
+
+> **Tip:** Start with `enable_posting` unset (defaults to `false`) to verify
+> CloudWatch logs look correct before enabling live posts.
 
 CDK will display a summary of IAM changes and prompt for confirmation
 before creating any resources.

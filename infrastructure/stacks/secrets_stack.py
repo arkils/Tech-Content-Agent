@@ -1,68 +1,61 @@
 """
 infrastructure/stacks/secrets_stack.py
 ========================================
-SSM Parameter Store SecureString parameters for all platform API credentials.
+AWS Secrets Manager secrets for all platform API credentials.
 
-Parameters are created as encrypted placeholders (value ``"placeholder"``).
-Populate each parameter with real credentials via the AWS Console or CLI
-before the first pipeline run:
+Secrets are created with placeholder values.  Populate each secret with
+real credentials via the AWS Console or CLI before the first pipeline run:
 
-    aws ssm put-parameter \\
-        --name "/tech-news-agent/news-api" \\
-        --type "SecureString" \\
-        --value '{"api_key": "YOUR_KEY"}' \\
-        --overwrite
+    aws secretsmanager put-secret-value \\
+        --secret-id "/tech-news-agent/linkedin" \\
+        --secret-string '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}'
 
-Parameter paths match the constants in ``agent.config.AgentConfig``.
+Secret names match the constants in ``agent.config.AgentConfig``.
 """
 
 from __future__ import annotations
 
 import aws_cdk as cdk
-from aws_cdk import aws_ssm as ssm
+from aws_cdk import aws_secretsmanager as secretsmanager
 from constructs import Construct
 
 
 class SecretsStack(cdk.Stack):
-    """SSM Parameter Store SecureString stubs for platform API credentials."""
+    """Secrets Manager secret stubs for platform API credentials."""
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs: object) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Parameters are created with a placeholder value.
+        # Secrets are created with placeholder JSON matching the expected schema.
         # Replace values via AWS Console or CLI before the first run.
-        self.news_api_param = ssm.CfnParameter(
+        self.news_api_secret = secretsmanager.CfnSecret(
             self,
-            "NewsApiParam",
+            "NewsApiSecret",
             name="/tech-news-agent/news-api",
-            type="SecureString",
-            value="placeholder",
             description="NewsAPI.org API key — replace placeholder before first run",
+            secret_string='{"api_key": "placeholder"}',
         )
 
-        self.linkedin_param = ssm.CfnParameter(
+        self.linkedin_secret = secretsmanager.CfnSecret(
             self,
-            "LinkedInParam",
+            "LinkedInSecret",
             name="/tech-news-agent/linkedin",
-            type="SecureString",
-            value="placeholder",
-            description="LinkedIn OAuth access token — replace placeholder before first run",
+            description="LinkedIn OAuth credentials — replace placeholder before first run",
+            secret_string='{"access_token": "placeholder", "author_urn": "placeholder"}',
         )
 
-        self.instagram_param = ssm.CfnParameter(
+        self.instagram_secret = secretsmanager.CfnSecret(
             self,
-            "InstagramParam",
+            "InstagramSecret",
             name="/tech-news-agent/instagram",
-            type="SecureString",
-            value="placeholder",
             description="Meta Graph API credentials — replace placeholder before first run",
+            secret_string='{"access_token": "placeholder", "instagram_account_id": "placeholder"}',
         )
 
-        self.youtube_param = ssm.CfnParameter(
+        self.youtube_secret = secretsmanager.CfnSecret(
             self,
-            "YouTubeParam",
+            "YouTubeSecret",
             name="/tech-news-agent/youtube",
-            type="SecureString",
-            value="placeholder",
             description="YouTube Data API v3 credentials — replace placeholder before first run",
+            secret_string='{"client_id": "placeholder", "client_secret": "placeholder", "refresh_token": "placeholder"}',
         )

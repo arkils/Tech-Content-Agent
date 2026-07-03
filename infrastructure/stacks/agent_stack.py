@@ -47,7 +47,7 @@ class _LocalBundler:
     def try_bundle(self, output_dir: str, *, options: cdk.BundlingOptions | None = None) -> bool:
         try:
             subprocess.run(
-                ["pip", "install", "feedparser", "-t", output_dir, "--quiet"],
+                ["pip", "install", "feedparser", "requests", "-t", output_dir, "--quiet"],
                 check=True,
             )
             shutil.copytree(
@@ -69,6 +69,8 @@ class TechNewsAgentStack(cdk.Stack):
         *,
         articles_table: dynamodb.Table,
         feeds_table: dynamodb.Table,
+        enabled_publishers: str = "blog,linkedin",
+        enable_posting: bool = False,
         **kwargs: object,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -97,7 +99,7 @@ class TechNewsAgentStack(cdk.Stack):
                         "bash",
                         "-c",
                         (
-                            "pip install feedparser -t /asset-output --quiet"
+                            "pip install feedparser requests -t /asset-output --quiet"
                             " && cp -r /asset-input/agent /asset-output/agent"
                         ),
                     ],
@@ -109,7 +111,8 @@ class TechNewsAgentStack(cdk.Stack):
             environment={
                 "DYNAMODB_TABLE_NAME": articles_table.table_name,
                 "NEWS_FEEDS_TABLE": feeds_table.table_name,
-                "ENABLED_PUBLISHERS": "blog",
+                "ENABLED_PUBLISHERS": enabled_publishers,
+                "ENABLE_POSTING": "true" if enable_posting else "false",
                 "LOG_LEVEL": "INFO",
             },
         )
@@ -133,11 +136,11 @@ class TechNewsAgentStack(cdk.Stack):
 
         self.function.add_to_role_policy(
             iam.PolicyStatement(
-                sid="SsmGetParameters",
+                sid="SecretsManagerGetSecretValue",
                 effect=iam.Effect.ALLOW,
-                actions=["ssm:GetParameter"],
+                actions=["secretsmanager:GetSecretValue"],
                 resources=[
-                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/tech-news-agent/*"
+                    f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:/tech-news-agent/*"
                 ],
             )
         )

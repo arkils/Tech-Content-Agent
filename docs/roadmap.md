@@ -20,14 +20,14 @@
 - [x] Full deployment documentation with secrets setup (`docs/deployment.md`)
 - [x] Full development guide (`docs/development.md`)
 
-## Phase 2 — Agent tools & pipeline (in progress)
+## Phase 2 — Agent tools & pipeline ✅ Complete
 
 - [x] `AgentConfig` extended — `news_feeds_table`, `news_feed_urls`, `max_articles_per_run`
 - [x] Data models — `FeedSource`, `Article`, `ArticleSummary`, `ContentPackage`, `PublishResult` in `agent/models/`
 - [x] `fetch_tech_news` tool — RSS / News API ingestion (DynamoDB feed registry + env var fallback)
 - [x] `check_duplicate` tool — DynamoDB article URL deduplication + `mark_seen` write-back with TTL
 - [x] `summarise_articles` tool — Amazon Bedrock batch summarisation with duplicate-coverage detection
-- [x] `generate_post` tool — LinkedIn post generation via Bedrock; other platforms deferred to Phase 4
+- [x] `generate_post` tool — LinkedIn post generation via Bedrock; other platforms deferred to Phase 7
 - [x] `news_pipeline` workflow — full end-to-end orchestration with early-exit, publisher isolation, and second-run dedup
 - [x] Unit test coverage — 168 tests passing
 
@@ -41,14 +41,15 @@
 - [x] Tag all resources with `Project=tech-news-agent`, `ManagedBy=cdk`, `Owner=<context>`
 - [x] Local Lambda bundler — no Docker required for synth/deploy
 
-## Phase 4 — Platform API integrations
+## Phase 4 — Platform API integrations ✅ Complete
 
-- [ ] `LinkedInPublisher.publish()` — LinkedIn Share API (`/rest/posts`)
-- [ ] `InstagramPublisher.publish()` — Meta Graph API two-step flow
-- [ ] `YouTubePublisher.publish()` — YouTube Data API v3 Community Posts
-- [ ] Secrets Manager credential fetch in each publisher
-- [ ] OAuth token refresh handling (LinkedIn, Instagram, YouTube all expire after 60 days)
-- [ ] End-to-end integration tests per platform
+- [x] `LinkedInPublisher.publish()` — LinkedIn Share API (`/rest/posts`)
+- [x] Secrets Manager credential fetch in `LinkedInPublisher`
+- [x] `ENABLE_POSTING` dry-run flag — logs the full post to CloudWatch without calling any API (default: `false`)
+- [x] `enable_posting` CDK context parameter — flip to `true` at deploy time to go live
+- [x] Infrastructure fixed — `SecretsStack` migrated from SSM to Secrets Manager; Lambda IAM updated to `secretsmanager:GetSecretValue`
+- [x] Lambda bundler installs all runtime dependencies (`feedparser`, `requests`)
+- [x] 178 unit tests — all passing
 
 ## Phase 5 — Production hardening
 
@@ -65,3 +66,11 @@
 - [ ] Automated rollback on CDK deployment failure
 - [ ] Runbook documentation (`docs/runbook.md`)
 - [ ] Load and chaos testing
+
+## Phase 7 — Additional platform integrations
+
+- [ ] `InstagramPublisher.publish()` — Meta Graph API two-step flow
+- [ ] `YouTubePublisher.publish()` — YouTube Data API v3 Community Posts
+- [ ] Secrets Manager credential fetch in Instagram and YouTube publishers
+- [ ] OAuth token refresh handling (Instagram and YouTube tokens expire after 60 days)
+- [ ] End-to-end integration tests for Instagram and YouTube

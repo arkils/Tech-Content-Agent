@@ -70,7 +70,7 @@ tests/
 └── publishers/              # One file per publisher platform
     ├── test_registry.py     # Publisher registry / factory tests
     ├── test_blog.py         # BlogPublisher (fully functional)
-    ├── test_linkedin.py     # LinkedInPublisher (format + NotImplementedError)
+    ├── test_linkedin.py     # LinkedInPublisher — format, credentials, publish, dry-run
     ├── test_instagram.py    # InstagramPublisher
     └── test_youtube.py      # YouTubePublisher
 ```
@@ -203,17 +203,16 @@ Quick summary:
 
 ## 6. Running the agent locally
 
-> The agent requires the pipeline to be implemented before it can run end-to-end.
-
-For now you can exercise the `BlogPublisher` directly in a Python shell:
+The full pipeline runs end-to-end. To exercise it locally without making
+real AWS or LinkedIn API calls, use the `dry_run` flag on the publisher:
 
 ```python
-from agent.publishers.blog import BlogPublisher
+from agent.publishers.linkedin import LinkedInPublisher
 from agent.publishers.base import ContentPackage, ArticleSummary
 
 package = ContentPackage(
     topic="Test Run",
-    digest="Testing the blog publisher locally.",
+    digest="Testing the LinkedIn publisher locally.",
     articles=[
         ArticleSummary(
             title="Sample Article",
@@ -226,6 +225,18 @@ package = ContentPackage(
     keywords=["python", "aws", "ai"],
     raw_post="This is a locally generated test post.",
 )
+
+# dry_run=True — prints the formatted post, never calls the LinkedIn API
+publisher = LinkedInPublisher(dry_run=True)
+result = publisher.run(package)
+print(result)
+# PublishResult(platform='linkedin', success=True, post_id='dry-run', ...)
+```
+
+To test the `BlogPublisher` (writes a Markdown file, no credentials needed):
+
+```python
+from agent.publishers.blog import BlogPublisher
 
 publisher = BlogPublisher(output_dir="output/test")
 result = publisher.run(package)

@@ -19,12 +19,12 @@ class TestAgentConfig:
         monkeypatch.delenv("AWS_REGION", raising=False)
         assert AgentConfig.aws_region in (os.environ.get("AWS_REGION", "us-east-1"),)
 
-    def test_param_paths_are_constants(self) -> None:
-        """SSM Parameter Store paths must be defined as constants and never be empty."""
-        assert AgentConfig.LINKEDIN_PARAM_PATH
-        assert AgentConfig.NEWS_API_PARAM_PATH
-        assert AgentConfig.INSTAGRAM_PARAM_PATH
-        assert AgentConfig.YOUTUBE_PARAM_PATH
+    def test_secret_names_are_constants(self) -> None:
+        """Secrets Manager secret names must be defined as constants and never be empty."""
+        assert AgentConfig.LINKEDIN_SECRET_NAME
+        assert AgentConfig.NEWS_API_SECRET_NAME
+        assert AgentConfig.INSTAGRAM_SECRET_NAME
+        assert AgentConfig.YOUTUBE_SECRET_NAME
 
     def test_default_dynamodb_table_name(self) -> None:
         """Deduplication table name should have a sensible default."""

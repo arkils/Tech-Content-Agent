@@ -3,16 +3,28 @@ tests/publishers/test_linkedin.py
 ===================================
 Unit tests for agent/publishers/linkedin.py.
 
-Credentials are never used in tests — publish() is expected to raise
-NotImplementedError until the LinkedIn API integration is implemented.
+AWS calls are mocked with moto; HTTP calls to the LinkedIn API are mocked
+with unittest.mock.patch so no real network traffic is generated.
 """
 
 from __future__ import annotations
 
-import pytest
+import json
+from unittest.mock import MagicMock, patch
 
-from agent.publishers.base import ArticleSummary, ContentPackage
+import boto3
+import moto
+import pytest
+import requests
+
+from agent.config import AgentConfig
+from agent.publishers.base import ArticleSummary, ContentPackage, PublishResult
 from agent.publishers.linkedin import LinkedInPublisher, _MAX_CHARS
+
+
+# ---------------------------------------------------------------------------
+# Shared fixture
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -34,6 +46,28 @@ def package() -> ContentPackage:
     )
 
 
+@pytest.fixture
+def secrets_client():
+    """A moto-backed Secrets Manager client pre-loaded with LinkedIn credentials."""
+    with moto.mock_aws():
+        client = boto3.client("secretsmanager", region_name="us-east-1")
+        client.create_secret(
+            Name=AgentConfig.LINKEDIN_SECRET_NAME,
+            SecretString=json.dumps(
+                {
+                    "access_token": "test-access-token",
+                    "author_urn": "urn:li:person:test123",
+                }
+            ),
+        )
+        yield client
+
+
+# ---------------------------------------------------------------------------
+# format_content tests
+# ---------------------------------------------------------------------------
+
+
 class TestLinkedInPublisherFormatContent:
     def test_returns_non_empty_string(self, package: ContentPackage) -> None:
         result = LinkedInPublisher().format_content(package)
@@ -49,7 +83,6 @@ class TestLinkedInPublisherFormatContent:
         assert "#aws" in result
 
     def test_does_not_exceed_max_chars(self, package: ContentPackage) -> None:
-        # Make a very long raw_post to trigger truncation
         long_package = ContentPackage(
             topic=package.topic,
             digest=package.digest,
@@ -72,7 +105,156 @@ class TestLinkedInPublisherFormatContent:
         assert result.endswith("...")
 
 
+# ---------------------------------------------------------------------------
+# _get_credentials tests
+# ---------------------------------------------------------------------------
+
+
+class TestLinkedInPublisherGetCredentials:
+    def test_returns_access_token_and_author_urn(self, secrets_client) -> None:
+        publisher = LinkedInPublisher(secrets_client=secrets_client)
+        creds = publisher._get_credentials()
+        assert creds["access_token"] == "test-access-token"
+        assert creds["author_urn"] == "urn:li:person:test123"
+
+    def test_raises_key_error_when_secret_is_incomplete(self, secrets_client) -> None:
+        secrets_client.put_secret_value(
+            SecretId=AgentConfig.LINKEDIN_SECRET_NAME,
+            SecretString=json.dumps({"access_token": "only-token"}),
+        )
+        publisher = LinkedInPublisher(secrets_client=secrets_client)
+        with pytest.raises(KeyError, match="author_urn"):
+            publisher._get_credentials()
+
+
+# ---------------------------------------------------------------------------
+# publish() tests
+# ---------------------------------------------------------------------------
+
+
 class TestLinkedInPublisherPublish:
-    def test_publish_raises_not_implemented(self) -> None:
-        with pytest.raises(NotImplementedError):
-            LinkedInPublisher().publish("some content")
+    def test_publish_success_returns_publish_result(self, secrets_client) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.headers = {"X-RestLi-Id": "urn:li:share:9999"}
+        mock_response.raise_for_status = MagicMock()
+
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=False)
+
+        with patch("agent.publishers.linkedin.requests.post", return_value=mock_response):
+            result = publisher.publish("Test LinkedIn post content.")
+
+        assert isinstance(result, PublishResult)
+        assert result.success is True
+        assert result.platform == "linkedin"
+        assert result.post_id == "urn:li:share:9999"
+        assert result.error is None
+
+    def test_publish_sends_correct_payload(self, secrets_client) -> None:
+        mock_response = MagicMock()
+        mock_response.headers = {"X-RestLi-Id": "urn:li:share:1234"}
+        mock_response.raise_for_status = MagicMock()
+
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=False)
+
+        with patch("agent.publishers.linkedin.requests.post", return_value=mock_response) as mock_post:
+            publisher.publish("Post body text.")
+
+        _, call_kwargs = mock_post.call_args
+        payload = call_kwargs["json"]
+        assert payload["author"] == "urn:li:person:test123"
+        assert payload["commentary"] == "Post body text."
+        assert payload["visibility"] == "PUBLIC"
+        assert payload["lifecycleState"] == "PUBLISHED"
+
+    def test_publish_sends_bearer_token_header(self, secrets_client) -> None:
+        mock_response = MagicMock()
+        mock_response.headers = {}
+        mock_response.raise_for_status = MagicMock()
+
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=False)
+
+        with patch("agent.publishers.linkedin.requests.post", return_value=mock_response) as mock_post:
+            publisher.publish("Post body text.")
+
+        _, call_kwargs = mock_post.call_args
+        assert call_kwargs["headers"]["Authorization"] == "Bearer test-access-token"
+
+    def test_publish_returns_failure_on_http_error(self, secrets_client) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.text = "Forbidden"
+        http_error = requests.HTTPError(response=mock_response)
+        mock_response.raise_for_status.side_effect = http_error
+
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=False)
+
+        with patch("agent.publishers.linkedin.requests.post", return_value=mock_response):
+            result = publisher.publish("Post body.")
+
+        assert result.success is False
+        assert result.platform == "linkedin"
+        assert "403" in result.error
+
+    def test_publish_returns_failure_on_request_exception(self, secrets_client) -> None:
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=False)
+
+        with patch(
+            "agent.publishers.linkedin.requests.post",
+            side_effect=requests.ConnectionError("timeout"),
+        ):
+            result = publisher.publish("Post body.")
+
+        assert result.success is False
+        assert result.error is not None
+
+    def test_publish_returns_failure_when_credentials_missing(self) -> None:
+        with moto.mock_aws():
+            empty_client = boto3.client("secretsmanager", region_name="us-east-1")
+            publisher = LinkedInPublisher(secrets_client=empty_client, dry_run=False)
+            result = publisher.publish("Post body.")
+
+        assert result.success is False
+        assert result.platform == "linkedin"
+        assert result.error is not None
+
+
+# ---------------------------------------------------------------------------
+# dry_run tests
+# ---------------------------------------------------------------------------
+
+
+class TestLinkedInPublisherDryRun:
+    def test_dry_run_returns_success_without_calling_api(self, secrets_client) -> None:
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=True)
+
+        with patch("agent.publishers.linkedin.requests.post") as mock_post:
+            result = publisher.publish("Post body.")
+
+        mock_post.assert_not_called()
+        assert result.success is True
+        assert result.post_id == "dry-run"
+        assert result.platform == "linkedin"
+
+    def test_dry_run_does_not_fetch_credentials(self) -> None:
+        # dry_run=True should return before ever touching Secrets Manager
+        with moto.mock_aws():
+            empty_client = boto3.client("secretsmanager", region_name="us-east-1")
+            publisher = LinkedInPublisher(secrets_client=empty_client, dry_run=True)
+            result = publisher.publish("Post body.")
+
+        assert result.success is True
+        assert result.post_id == "dry-run"
+
+    def test_dry_run_false_calls_api(self, secrets_client) -> None:
+        mock_response = MagicMock()
+        mock_response.headers = {"X-RestLi-Id": "urn:li:share:1"}
+        mock_response.raise_for_status = MagicMock()
+
+        publisher = LinkedInPublisher(secrets_client=secrets_client, dry_run=False)
+
+        with patch("agent.publishers.linkedin.requests.post", return_value=mock_response) as mock_post:
+            result = publisher.publish("Post body.")
+
+        mock_post.assert_called_once()
+        assert result.success is True

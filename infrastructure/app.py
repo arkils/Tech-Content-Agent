@@ -37,6 +37,8 @@ app = cdk.App()
 # Pass -c owner=<your-name> at deploy time, or set context.owner in cdk.json.
 # ---------------------------------------------------------------------------
 owner: str = app.node.try_get_context("owner") or "unset"
+enabled_publishers: str = app.node.try_get_context("enabled_publishers") or "blog,linkedin"
+enable_posting: bool = app.node.try_get_context("enable_posting") == "true"
 cdk.Tags.of(app).add("Project", "tech-news-agent")
 cdk.Tags.of(app).add("ManagedBy", "cdk")
 cdk.Tags.of(app).add("Owner", owner)
@@ -52,6 +54,8 @@ agent = TechNewsAgentStack(
     "TechNewsAgent",
     articles_table=storage.articles_table,
     feeds_table=storage.feeds_table,
+    enabled_publishers=enabled_publishers,
+    enable_posting=enable_posting,
 )
 
 scheduler = SchedulerStack(
