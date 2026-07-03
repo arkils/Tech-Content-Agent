@@ -124,18 +124,68 @@ Expected JSON structure:
 
 Required only when `linkedin` is in `ENABLED_PUBLISHERS`.
 
-Obtain credentials from the [LinkedIn Developer Portal](https://www.linkedin.com/developers/):
-1. Create a LinkedIn App.
-2. Request the `w_member_social` product (Share on LinkedIn).
-3. Generate a long-lived OAuth 2.0 access token.
-4. Note your person URN (`urn:li:person:<id>`) from the `/v2/me` API.
+LinkedIn uses OAuth 2.0 — you need to complete a one-time browser flow to get an access token.
+
+#### Step 1 — Create a LinkedIn App
+
+1. Go to the [LinkedIn Developer Portal](https://www.linkedin.com/developers/) and create an app.
+2. Under **Products**, request **Share on LinkedIn** (`w_member_social` scope).
+3. Under **Auth**, add `https://localhost` as an authorised redirect URL.
+4. Note your **Client ID** and **Client Secret**.
+
+#### Step 2 — Get the authorisation code (browser, once)
+
+Open this URL in your browser — replace `YOUR_CLIENT_ID`:
+
+```
+https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=YOUR_CLIENT_ID&redirect_uri=https://localhost&scope=w_member_social&state=random123
+```
+
+Sign in and authorise the app. You will be redirected to a URL like:
+```
+https://localhost/?code=AQT...&state=random123
+```
+Copy the `code` value from the URL.
+
+#### Step 3 — Exchange the code for an access token
+
+```bash
+curl -X POST https://www.linkedin.com/oauth/v2/accessToken \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "grant_type=authorization_code" \
+    -d "code=YOUR_CODE_FROM_STEP_2" \
+    -d "client_id=YOUR_CLIENT_ID" \
+    -d "client_secret=YOUR_CLIENT_SECRET" \
+    -d "redirect_uri=https://localhost"
+```
+
+Response:
+```json
+{
+    "access_token": "AQV...",
+    "expires_in": 5183944,
+    "refresh_token": "AQX...",
+    "refresh_token_expires_in": 31536000
+}
+```
+
+#### Step 4 — Find your person URN
+
+```bash
+curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" https://api.linkedin.com/v2/me
+```
+
+The `id` field in the response becomes `urn:li:person:<id>`.
+
+#### Step 5 — Store in SSM Parameter Store
 
 ```bash
 aws ssm put-parameter \
     --name "/tech-news-agent/linkedin" \
     --type SecureString \
-    --value '{"access_token": "YOUR_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}' \
-    --overwrite
+    --value '{"access_token": "YOUR_ACCESS_TOKEN", "author_urn": "urn:li:person:YOUR_ID"}' \
+    --overwrite \
+    --region us-east-1
 ```
 
 Expected JSON structure:
@@ -146,7 +196,21 @@ Expected JSON structure:
 }
 ```
 
-> **Note:** LinkedIn access tokens expire after 60 days — regenerate manually before expiry and update the SSM parameter.
+#### Token rotation (every 60 days)
+
+Access tokens expire after 60 days. Use the refresh token to get a new one without repeating the browser flow:
+
+```bash
+curl -X POST https://www.linkedin.com/oauth/v2/accessToken \
+    -d "grant_type=refresh_token" \
+    -d "refresh_token=YOUR_REFRESH_TOKEN" \
+    -d "client_id=YOUR_CLIENT_ID" \
+    -d "client_secret=YOUR_CLIENT_SECRET"
+```
+
+Then update the SSM parameter with the new `access_token` — no Lambda re-deploy needed.
+
+> **Tip:** Store the `refresh_token` somewhere safe (e.g. a personal password manager) so you can rotate without repeating the browser flow. Refresh tokens are valid for 1 year.
 
 ### 3c. Instagram credentials
 
