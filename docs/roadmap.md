@@ -44,12 +44,12 @@
 ## Phase 4 — Platform API integrations ✅ Complete
 
 - [x] `LinkedInPublisher.publish()` — LinkedIn Share API (`/rest/posts`)
-- [x] Secrets Manager credential fetch in `LinkedInPublisher`
+- [x] SSM Parameter Store credential fetch in `LinkedInPublisher` (SecureString, KMS-encrypted)
 - [x] `ENABLE_POSTING` dry-run flag — logs the full post to CloudWatch without calling any API (default: `false`)
 - [x] `enable_posting` CDK context parameter — flip to `true` at deploy time to go live
-- [x] Infrastructure fixed — `SecretsStack` migrated from SSM to Secrets Manager; Lambda IAM updated to `secretsmanager:GetSecretValue`
+- [x] Infrastructure: `SecretsStack` uses SSM Parameter Store SecureString; Lambda IAM grants `ssm:GetParameter` on `arn:aws:ssm:*:*:parameter/tech-news-agent/*`
 - [x] Lambda bundler installs all runtime dependencies (`feedparser`, `requests`)
-- [x] 178 unit tests — all passing
+- [x] 180 unit tests — all passing
 
 ## Phase 5 — Production hardening
 

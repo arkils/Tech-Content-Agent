@@ -93,7 +93,7 @@ class AgentConfig:
 
     aws_region: str = os.environ.get("AWS_REGION", "us-east-1")
     bedrock_model_id: str = os.environ.get(
-        "BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0"
+        "BEDROCK_MODEL_ID", "anthropic.claude-3-5-haiku-20241022-v1:0"
     )
     dynamodb_table_name: str = os.environ.get("DYNAMODB_TABLE_NAME", "tech-news-agent-articles")
     log_level: str = os.environ.get("LOG_LEVEL", "INFO")

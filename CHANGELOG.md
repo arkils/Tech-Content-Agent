@@ -10,7 +10,7 @@ This project uses [semantic versioning](https://semver.org/) — pre-1.0 while i
 ## [Unreleased]
 
 ### Planned next
-- Phase 4 — Platform API integrations (LinkedIn, Instagram, YouTube `publish()`)
+- Phase 5 — Production hardening (DLQ, CloudWatch alarms, retry logic)
 
 ---
 

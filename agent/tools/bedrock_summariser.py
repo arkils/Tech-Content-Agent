@@ -144,10 +144,10 @@ class ArticleSummariser:
                 modelId=self._config.bedrock_model_id,
                 messages=[{"role": "user", "content": [{"text": prompt}]}],
             )
-            return _extract_text(response)
         except Exception as exc:
             logger.warning("Bedrock request failed, falling back to OpenAI: %s", exc)
             return self._call_openai(prompt)
+        return _extract_text(response)
 
     def _call_openai(self, prompt: str) -> str:
         """Call OpenAI Chat Completions using an SSM-stored API key."""

@@ -71,7 +71,7 @@ tech-news-agent/
 ├── infrastructure/             # AWS CDK Infrastructure as Code
 │   ├── app.py                  # CDK application entry point
 │   ├── stacks/                 # CDK stack definitions
-│   └── constructs/             # Reusable CDK L3 constructs
+│   └── lib/                    # Reusable CDK L3 constructs
 ├── tests/                      # pytest test suite
 │   └── publishers/             # Publisher unit tests (one file per platform)
 ├── docs/                       # Project documentation
