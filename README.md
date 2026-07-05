@@ -30,7 +30,7 @@ It demonstrates production patterns for building and deploying intelligent agent
 |-------|-----------|
 | Runtime | Python 3.13 |
 | Agent framework | AWS AgentCore |
-| LLM | Amazon Bedrock (Claude) |
+| LLM | Amazon Bedrock (default) or OpenAI (configurable via `LLM_PROVIDER`) |
 | Infrastructure as Code | AWS CDK (Python) |
 | Scheduling | Amazon EventBridge |
 | State store | Amazon DynamoDB |
@@ -105,7 +105,11 @@ pip install -r requirements-dev.txt
 # 4. Run tests
 pytest
 
-# 5. Lint and format
+# 5. Run the agent locally (loads .env.local, uses real AWS)
+cp .env.example .env.local   # edit AWS_REGION at minimum
+python scripts/run_local.py --dry-run --force-new
+
+# 6. Lint and format
 ruff check .
 black .
 ```
@@ -115,25 +119,32 @@ black .
 Set the `ENABLED_PUBLISHERS` environment variable to control where content is published.
 Use a comma-separated list of platform keys:
 
-| Key | Publisher | Credentials required |
-|-----|-----------|----------------------|
-| `blog` | `BlogPublisher` | None — writes Markdown to `BLOG_OUTPUT_PATH` |
-| `linkedin` | `LinkedInPublisher` | `/tech-news-agent/linkedin` in SSM Parameter Store |
-| `instagram` | `InstagramPublisher` | `/tech-news-agent/instagram` in SSM Parameter Store |
-| `youtube` | `YouTubePublisher` | `/tech-news-agent/youtube` in SSM Parameter Store |
+| Key | Publisher | Credentials required | Default |
+|-----|-----------|----------------------|--------|
+| `linkedin` | `LinkedInPublisher` | `/tech-news-agent/linkedin` in SSM Parameter Store | ✅ yes |
+| `blog` | `BlogPublisher` | None — writes Markdown to `BLOG_OUTPUT_PATH` | |
+| `instagram` | `InstagramPublisher` | `/tech-news-agent/instagram` in SSM Parameter Store | |
+| `youtube` | `YouTubePublisher` | `/tech-news-agent/youtube` in SSM Parameter Store | |
 
 ```bash
-# Default — safe for all environments, no credentials needed
-ENABLED_PUBLISHERS=blog
+# Default — LinkedIn only
+ENABLED_PUBLISHERS=linkedin
 
 # Multiple platforms
-ENABLED_PUBLISHERS=blog,linkedin,instagram
-
-# All platforms
-ENABLED_PUBLISHERS=blog,linkedin,instagram,youtube
+ENABLED_PUBLISHERS=linkedin,instagram
 ```
 
-See [agent/publishers/README.md](agent/publishers/README.md) for the publisher architecture and [docs/development.md](docs/development.md) for full setup instructions.
+## Choosing an LLM provider
+
+```bash
+# Default — Amazon Bedrock with OpenAI as automatic fallback
+LLM_PROVIDER=bedrock
+BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
+
+# Use OpenAI directly (requires /tech-news-agent/openai in SSM Parameter Store)
+LLM_PROVIDER=openai
+OPENAI_MODEL_ID=gpt-4.1-mini
+```
 
 ---
 

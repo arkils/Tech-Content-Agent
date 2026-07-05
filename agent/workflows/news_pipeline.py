@@ -46,6 +46,7 @@ from agent.tools.bedrock_summariser import ArticleSummariser
 from agent.tools.deduplication import ArticleDeduplicator
 from agent.tools.news_fetcher import NewsFetcher
 from agent.tools.post_generator import PostGenerator
+from agent.tools.post_tracker import PostTracker
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +81,11 @@ class NewsPipeline:
     patching module globals or making real AWS calls.
 
     Args:
-        dynamodb_client: ``boto3.client("dynamodb")`` used by fetch + dedup tools.
+        dynamodb_client: ``boto3.client("dynamodb")`` used by fetch + dedup + tracker tools.
         bedrock_client:  ``boto3.client("bedrock-runtime")`` used by summariser + generator.
         config:          Agent configuration; defaults to ``AgentConfig``.
         platform:        Post-generation target platform (default ``"linkedin"``).
+        post_tracker:    Optional pre-built ``PostTracker``; constructed automatically when omitted.
     """
 
     def __init__(
@@ -92,6 +94,7 @@ class NewsPipeline:
         bedrock_client: object,
         config: type[AgentConfig] | AgentConfig = AgentConfig,
         platform: str = "linkedin",
+        post_tracker: PostTracker | None = None,
     ) -> None:
         self._config = config() if isinstance(config, type) else config
         self._platform = platform
@@ -99,6 +102,9 @@ class NewsPipeline:
         self._deduplicator = ArticleDeduplicator(dynamodb_client=dynamodb_client, config=self._config)
         self._summariser = ArticleSummariser(bedrock_client=bedrock_client, config=self._config)
         self._generator = PostGenerator(bedrock_client=bedrock_client, config=self._config)
+        self._tracker = post_tracker or PostTracker(
+            dynamodb_client=dynamodb_client, config=self._config  # type: ignore[arg-type]
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -168,8 +174,14 @@ class NewsPipeline:
         publishers = get_active_publishers(self._config.enabled_publishers)
 
         for publisher in publishers:
+            post_id: str | None = None
+            publish_result: PublishResult
             try:
-                publish_result = publisher.run(package)
+                content = publisher.format_content(package)
+                post_id = self._tracker.create_pending(
+                    publisher.platform_name, content, package.topic
+                )
+                publish_result = publisher.publish(content)
             except Exception as exc:
                 logger.exception(
                     "Unexpected error running publisher '%s'", publisher.platform_name
@@ -179,6 +191,26 @@ class NewsPipeline:
                     success=False,
                     error=str(exc),
                 )
+
+            if post_id is not None:
+                try:
+                    if publish_result.dry_run:
+                        self._tracker.mark_dry_run(post_id)
+                    elif publish_result.success:
+                        self._tracker.mark_success(
+                            post_id, publish_result.post_id, publish_result.url
+                        )
+                    else:
+                        self._tracker.mark_error(
+                            post_id, publish_result.error or "Unknown error"
+                        )
+                except Exception:
+                    logger.exception(
+                        "PostTracker update failed for post_id=%s platform=%s",
+                        post_id,
+                        publisher.platform_name,
+                    )
+
             result.publish_results.append(publish_result)
 
         # ----------------------------------------------------------

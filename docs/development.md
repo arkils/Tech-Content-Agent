@@ -203,46 +203,46 @@ Quick summary:
 
 ## 6. Running the agent locally
 
-The full pipeline runs end-to-end. To exercise it locally without making
-real AWS or LinkedIn API calls, use the `dry_run` flag on the publisher:
+Use `scripts/run_local.py` to run the full pipeline end-to-end against real AWS services.
 
-```python
-from agent.publishers.linkedin import LinkedInPublisher
-from agent.publishers.base import ContentPackage, ArticleSummary
+### Setup
 
-package = ContentPackage(
-    topic="Test Run",
-    digest="Testing the LinkedIn publisher locally.",
-    articles=[
-        ArticleSummary(
-            title="Sample Article",
-            url="https://example.com",
-            summary="A placeholder article for local testing.",
-            relevance_score=4,
-            source="Example",
-        )
-    ],
-    keywords=["python", "aws", "ai"],
-    raw_post="This is a locally generated test post.",
-)
-
-# dry_run=True — prints the formatted post, never calls the LinkedIn API
-publisher = LinkedInPublisher(dry_run=True)
-result = publisher.run(package)
-print(result)
-# PublishResult(platform='linkedin', success=True, post_id='dry-run', ...)
+```bash
+# Copy the example env file and edit it (AWS_REGION is the only required change)
+cp .env.example .env.local
 ```
 
-To test the `BlogPublisher` (writes a Markdown file, no credentials needed):
+Edit `.env.local` — at minimum set `AWS_REGION`. If you use a non-default AWS profile, also set `AWS_PROFILE`.
 
-```python
-from agent.publishers.blog import BlogPublisher
+### Run
 
-publisher = BlogPublisher(output_dir="output/test")
-result = publisher.run(package)
-print(result)
-# PublishResult(platform='blog', success=True, url='output/test/2026-01-01-abc12345.md', ...)
+```bash
+# Safe first run — generates and tracks the post in DynamoDB, does NOT post to LinkedIn
+python scripts/run_local.py --dry-run
+
+# If the pipeline exits early ("No new articles"), bypass deduplication
+python scripts/run_local.py --dry-run --force-new
+
+# Use OpenAI instead of Bedrock
+LLM_PROVIDER=openai python scripts/run_local.py --dry-run --force-new
+
+# When ready to actually post to LinkedIn:
+# 1. Set ENABLE_POSTING=true in .env.local
+# 2. Remove --dry-run
+python scripts/run_local.py --force-new
 ```
+
+The script prints a config summary on startup and the pipeline result on exit.  
+All logs are printed to the console at INFO level.
+
+### What happens locally vs in Lambda
+
+| Concern | Local | Lambda |
+|---------|-------|--------|
+| AWS credentials | `~/.aws/credentials` (boto3 credential chain) | IAM execution role |
+| SSM secrets | Fetched from real Parameter Store | Fetched from real Parameter Store |
+| DynamoDB | Real tables in your account | Real tables in your account |
+| Logging | Console (stdout) | CloudWatch Logs |
 
 ---
 

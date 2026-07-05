@@ -69,9 +69,12 @@ class TechNewsAgentStack(cdk.Stack):
         *,
         articles_table: dynamodb.Table,
         feeds_table: dynamodb.Table,
-        enabled_publishers: str = "blog,linkedin",
+        posts_table: dynamodb.Table,
+        enabled_publishers: str = "linkedin",
         enable_posting: bool = False,
         bedrock_model_id: str = "amazon.nova-lite-v1:0",
+        llm_provider: str = "bedrock",
+        openai_model_id: str = "gpt-4.1-mini",
         force_no_new_articles: bool = False,
         **kwargs: object,
     ) -> None:
@@ -113,9 +116,12 @@ class TechNewsAgentStack(cdk.Stack):
             environment={
                 "DYNAMODB_TABLE_NAME": articles_table.table_name,
                 "NEWS_FEEDS_TABLE": feeds_table.table_name,
+                "POSTS_TABLE_NAME": posts_table.table_name,
                 "ENABLED_PUBLISHERS": enabled_publishers,
                 "ENABLE_POSTING": "true" if enable_posting else "false",
                 "BEDROCK_MODEL_ID": bedrock_model_id,
+                "LLM_PROVIDER": llm_provider,
+                "OPENAI_MODEL_ID": openai_model_id,
                 "FORCE_NO_NEW_ARTICLES": "true" if force_no_new_articles else "false",
                 "LOG_LEVEL": "INFO",
             },
@@ -126,6 +132,7 @@ class TechNewsAgentStack(cdk.Stack):
         # ------------------------------------------------------------------
         articles_table.grant_read_write_data(self.function)
         feeds_table.grant_read_data(self.function)
+        posts_table.grant_read_write_data(self.function)
 
         self.function.add_to_role_policy(
             iam.PolicyStatement(

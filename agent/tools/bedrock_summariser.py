@@ -118,7 +118,16 @@ class ArticleSummariser:
         return self._prompt_template.replace("{{ARTICLES}}", articles_text)
 
     def _call_bedrock(self, prompt: str) -> str:
-        """Call Bedrock first and fall back to OpenAI if Bedrock fails."""
+        """Route to the configured LLM provider.
+
+        When ``LLM_PROVIDER=openai``, calls OpenAI directly without attempting Bedrock.
+        When ``LLM_PROVIDER=bedrock`` (default), tries Bedrock first and falls back
+        to OpenAI on any error.
+        """
+        if self._config.llm_provider == "openai":
+            logger.info("LLM_PROVIDER=openai — routing directly to OpenAI")
+            return self._call_openai(prompt)
+
         try:
             if self._config.bedrock_model_id.startswith("amazon.nova"):
                 request_body = json.dumps(
@@ -165,7 +174,7 @@ class ArticleSummariser:
             "Content-Type": "application/json",
         }
         payload = {
-            "model": "gpt-4.1-mini",
+            "model": self._config.openai_model_id,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.2,
         }

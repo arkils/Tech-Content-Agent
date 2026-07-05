@@ -43,6 +43,9 @@ secrets.json
 secrets.yaml
 secrets.yml
 
+# --- Generated output (never commit produced posts) ---
+output/posts/
+
 # --- AWS CDK ---
 cdk.out/
 cdk.context.json

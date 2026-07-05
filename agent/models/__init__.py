@@ -124,6 +124,9 @@ class PublishResult:
         post_id:    Platform-assigned ID for the published post, if available.
         url:        Public URL of the published post, if available.
         error:      Human-readable error message on failure.
+        dry_run:    ``True`` when the post was generated but not sent because
+                    ``ENABLE_POSTING=false``.  ``success`` will also be ``True``
+                    in this case.
     """
 
     platform: str
@@ -131,6 +134,7 @@ class PublishResult:
     post_id: str | None = None
     url: str | None = None
     error: str | None = None
+    dry_run: bool = False
 
 
 __all__ = [

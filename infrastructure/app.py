@@ -37,9 +37,11 @@ app = cdk.App()
 # Pass -c owner=<your-name> at deploy time, or set context.owner in cdk.json.
 # ---------------------------------------------------------------------------
 owner: str = app.node.try_get_context("owner") or "unset"
-enabled_publishers: str = app.node.try_get_context("enabled_publishers") or "blog,linkedin"
+enabled_publishers: str = app.node.try_get_context("enabled_publishers") or "linkedin"
 enable_posting: bool = app.node.try_get_context("enable_posting") == "true"
 bedrock_model_id: str = app.node.try_get_context("bedrock_model_id") or "amazon.nova-lite-v1:0"
+llm_provider: str = app.node.try_get_context("llm_provider") or "bedrock"
+openai_model_id: str = app.node.try_get_context("openai_model_id") or "gpt-4.1-mini"
 force_no_new_articles: bool = app.node.try_get_context("force_no_new_articles") == "true"
 cdk.Tags.of(app).add("Project", "tech-news-agent")
 cdk.Tags.of(app).add("ManagedBy", "cdk")
@@ -56,9 +58,12 @@ agent = TechNewsAgentStack(
     "TechNewsAgent",
     articles_table=storage.articles_table,
     feeds_table=storage.feeds_table,
+    posts_table=storage.posts_table,
     enabled_publishers=enabled_publishers,
     enable_posting=enable_posting,
     bedrock_model_id=bedrock_model_id,
+    llm_provider=llm_provider,
+    openai_model_id=openai_model_id,
     force_no_new_articles=force_no_new_articles,
 )
 

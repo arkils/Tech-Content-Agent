@@ -1,13 +1,15 @@
 """
 infrastructure/stacks/storage_stack.py
 =======================================
-DynamoDB tables for article deduplication and feed registry.
+DynamoDB tables for article deduplication, feed registry, and post tracking.
 
 Tables
 ------
 - ``tech-news-agent-articles`` — tracks processed article URLs with a TTL
   so records auto-expire after ``article_ttl_days`` (default 90 days).
 - ``tech-news-agent-feeds``    — stores the managed RSS/Atom feed registry.
+- ``tech-news-agent-posts``    — records each publish attempt with status
+  (pending / success / dry_run / error) and the formatted post content.
 """
 
 from __future__ import annotations
@@ -67,3 +69,27 @@ class StorageStack(cdk.Stack):
 
         cdk.CfnOutput(self, "ArticlesTableName", value=self.articles_table.table_name)
         cdk.CfnOutput(self, "FeedsTableName", value=self.feeds_table.table_name)
+
+        # ------------------------------------------------------------------
+        # Posts table — publish attempt tracking
+        # Partition key: post_id (String — UUID v4)
+        # TTL attribute:  ttl (Number — Unix epoch seconds)
+        # ------------------------------------------------------------------
+        self.posts_table = dynamodb.Table(
+            self,
+            "PostsTable",
+            table_name="tech-news-agent-posts",
+            partition_key=dynamodb.Attribute(
+                name="post_id",
+                type=dynamodb.AttributeType.STRING,
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption=dynamodb.TableEncryption.AWS_MANAGED,
+            point_in_time_recovery_specification=dynamodb.PointInTimeRecoverySpecification(
+                point_in_time_recovery_enabled=True,
+            ),
+            time_to_live_attribute="ttl",
+            removal_policy=cdk.RemovalPolicy.DESTROY,
+        )
+
+        cdk.CfnOutput(self, "PostsTableName", value=self.posts_table.table_name)

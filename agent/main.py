@@ -33,6 +33,10 @@ def handler(event: dict, context: object) -> dict:
     Returns:
         A response dict with pipeline run statistics.
     """
+    # Apply LOG_LEVEL to the root logger so all INFO/DEBUG calls reach CloudWatch.
+    # Lambda pre-configures a StreamHandler, so setLevel is sufficient here.
+    logging.getLogger().setLevel(AgentConfig.log_level)
+
     logger.info("tech-news-agent started", extra={"event": event})
 
     dynamodb_client = boto3.client("dynamodb", region_name=AgentConfig.aws_region)

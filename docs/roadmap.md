@@ -51,6 +51,18 @@
 - [x] Lambda bundler installs all runtime dependencies (`feedparser`, `requests`)
 - [x] 180 unit tests — all passing
 
+## Phase 4.1 — Post Tracking, LLM Provider Switch & Developer Experience ✅ Complete
+
+- [x] **Post tracking** — new `PostTracker` tool writes every publish attempt to a dedicated `tech-news-agent-posts` DynamoDB table; status progresses `pending` → `success | dry_run | error`
+- [x] **`dry_run` status** — when `ENABLE_POSTING=false` the post is generated and stored with `status=dry_run` (not `success`) so the audit trail is accurate
+- [x] **LLM provider switch** — `LLM_PROVIDER=openai` routes both summarisation and post-generation directly to OpenAI Chat Completions, bypassing Bedrock entirely; `LLM_PROVIDER=bedrock` (default) keeps the existing Bedrock-first + OpenAI-fallback behaviour
+- [x] **Configurable OpenAI model** — `OPENAI_MODEL_ID` env var (default `gpt-4.1-mini`) used instead of a hardcoded model name
+- [x] **CloudWatch logging fix** — `logging.getLogger().setLevel()` applied in `handler()` so INFO-level pipeline logs actually reach CloudWatch
+- [x] **LinkedIn-only default** — `ENABLED_PUBLISHERS` now defaults to `linkedin`; `output/posts/` added to `.gitignore`
+- [x] **Local runner** — `scripts/run_local.py` loads `.env.local`, prints a config summary, and runs the full pipeline against real AWS; `--dry-run` and `--force-new` flags for safe local iteration
+- [x] **`.env.example`** — committed template documenting every env var with descriptions and defaults
+- [x] 192 unit tests — all passing
+
 ## Phase 5 — Production hardening
 
 - [ ] Dead-letter queue (DLQ) for failed pipeline runs

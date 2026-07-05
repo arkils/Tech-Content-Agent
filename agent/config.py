@@ -121,12 +121,32 @@ class AgentConfig:
     # -------------------------------------------------------------------------
     # Publisher configuration
     # -------------------------------------------------------------------------
-    #: Comma-separated list of platform keys.  Default is "blog" which requires
-    #: no external credentials and is safe to enable in all environments.
-    enabled_publishers: list[str] = _parse_list("ENABLED_PUBLISHERS", "blog")
+    #: Comma-separated list of platform keys.
+    enabled_publishers: list[str] = _parse_list("ENABLED_PUBLISHERS", "linkedin")
 
     #: Directory where BlogPublisher writes generated Markdown files.
     blog_output_path: str = os.environ.get("BLOG_OUTPUT_PATH", "output/posts")
+
+    #: DynamoDB table that stores per-publish-attempt post records.
+    #: Partition key: ``post_id`` (String — UUID v4).
+    posts_table_name: str = os.environ.get("POSTS_TABLE_NAME", "tech-news-agent-posts")
+
+    #: How many days to retain post records in DynamoDB.
+    post_ttl_days: int = int(os.environ.get("POST_TTL_DAYS", "365"))
+
+    # -------------------------------------------------------------------------
+    # Posting control
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # LLM provider configuration
+    # -------------------------------------------------------------------------
+    #: Which LLM backend to use for summarisation and post generation.
+    #: ``"bedrock"`` (default) — uses Amazon Bedrock with OpenAI as fallback.
+    #: ``"openai"``            — uses OpenAI directly, skipping Bedrock entirely.
+    llm_provider: str = os.environ.get("LLM_PROVIDER", "bedrock")
+
+    #: OpenAI model ID used when ``llm_provider="openai"`` or as the Bedrock fallback.
+    openai_model_id: str = os.environ.get("OPENAI_MODEL_ID", "gpt-4.1-mini")
 
     # -------------------------------------------------------------------------
     # Posting control

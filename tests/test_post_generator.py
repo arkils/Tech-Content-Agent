@@ -139,7 +139,15 @@ class TestPostGeneratorRun:
             )
         }
         generator = PostGenerator(bedrock_client=client)
-        generator._config = type("Config", (), {"bedrock_model_id": "amazon.nova-lite-v1:0"})()
+        generator._config = type(
+            "Config",
+            (),
+            {
+                "bedrock_model_id": "amazon.nova-lite-v1:0",
+                "llm_provider": "bedrock",
+                "openai_model_id": "gpt-4.1-mini",
+            },
+        )()
 
         result = generator.run([_make_summary(1)], platform="linkedin")
 

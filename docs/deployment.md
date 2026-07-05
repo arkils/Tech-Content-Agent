@@ -240,7 +240,27 @@ Expected JSON structure:
 
 > **Note:** Long-lived tokens expire after 60 days — refresh via `/refresh_access_token` before expiry.
 
-### 3d. YouTube credentials
+### 3d. OpenAI API key
+
+Required only when `LLM_PROVIDER=openai` (or as a Bedrock fallback).
+
+Obtain an API key from [platform.openai.com](https://platform.openai.com/).
+
+```bash
+aws ssm put-parameter \
+    --name "/tech-news-agent/openai" \
+    --type SecureString \
+    --value '{"api_key": "sk-YOUR_KEY_HERE"}' \
+    --overwrite \
+    --region us-east-1
+```
+
+Expected JSON structure:
+```json
+{ "api_key": "sk-..." }
+```
+
+### 3e. YouTube credentials
 
 Required only when `youtube` is in `ENABLED_PUBLISHERS`.
 
@@ -284,21 +304,25 @@ Non-sensitive configuration is passed via environment variables.
 For the CDK deploy step, export these in your shell or CI environment:
 
 ```bash
-# Required
+# AWS region
 export AWS_REGION=us-east-1
 
-# Which platforms to publish to (comma-separated, no spaces)
-# Valid keys: blog, linkedin, instagram, youtube
-export ENABLED_PUBLISHERS=blog,linkedin
+# Which platform to publish to (default: linkedin)
+export ENABLED_PUBLISHERS=linkedin
 
-# Bedrock model (default is Claude 3.5 Sonnet)
-export BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
+# LLM provider: "bedrock" (default, with OpenAI fallback) or "openai" (direct)
+export LLM_PROVIDER=bedrock
 
-# DynamoDB table name (must match what CDK provisions)
+# Bedrock model (used when LLM_PROVIDER=bedrock)
+export BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
+
+# OpenAI model (used when LLM_PROVIDER=openai or as Bedrock fallback)
+export OPENAI_MODEL_ID=gpt-4.1-mini
+
+# DynamoDB table names (must match what CDK provisions)
 export DYNAMODB_TABLE_NAME=tech-news-agent-articles
-
-# For BlogPublisher — local path where Markdown files are written
-export BLOG_OUTPUT_PATH=output/posts
+export NEWS_FEEDS_TABLE=tech-news-agent-feeds
+export POSTS_TABLE_NAME=tech-news-agent-posts
 ```
 
 > **`ENABLE_POSTING`** is intentionally **not** set here — it is controlled via
@@ -335,10 +359,11 @@ before creating any resources.
 ### What gets deployed
 
 | Stack | Resource | Purpose |
-|-------|----------|---------| 
+|-------|----------|---------|
 | `TechNewsAgentStorage` | DynamoDB `tech-news-agent-articles` | Article deduplication with TTL |
 | `TechNewsAgentStorage` | DynamoDB `tech-news-agent-feeds` | Managed RSS feed registry |
-| `TechNewsAgentSecrets` | SSM Parameter Store × 4 | Platform credential stubs |
+| `TechNewsAgentStorage` | DynamoDB `tech-news-agent-posts` | Per-publish-attempt audit trail (status: pending / success / dry_run / error) |
+| `TechNewsAgentSecrets` | SSM Parameter Store × 5 | Platform credential stubs (linkedin, instagram, youtube, openai, news-api) |
 | `TechNewsAgent` | Lambda `tech-news-agent` | Pipeline handler (15 min, 512 MB) |
 | `TechNewsAgent` | IAM execution role | Least-privilege access to DynamoDB, Bedrock, SSM Parameter Store |
 | `TechNewsAgent` | CloudWatch log group `/aws/lambda/tech-news-agent` | Structured logs (30-day retention) |

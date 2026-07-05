@@ -14,6 +14,32 @@ This project uses [semantic versioning](https://semver.org/) — pre-1.0 while i
 
 ---
 
+## [0.11.0] — 2026-07-05
+
+### Added
+- **`agent/tools/post_tracker.py`** — new `PostTracker` class: writes a `pending` DynamoDB record before each publish attempt; updates to `success`, `dry_run`, or `error` after delivery; injectable `dynamodb_client` for full test isolation
+- **`infrastructure/stacks/storage_stack.py`** — new `tech-news-agent-posts` DynamoDB table (PK: `post_id` UUID, TTL on `ttl` attribute, PAY_PER_REQUEST, encryption, PITR)
+- **`agent/config.py`** — added `posts_table_name`, `post_ttl_days` (365 days default), `llm_provider`, and `openai_model_id` config fields
+- **`agent/models/__init__.py`** — added `dry_run: bool = False` field to `PublishResult` — distinguishes "generated but not sent" from a real success
+- **`scripts/run_local.py`** — new local runner: loads `.env.local`, prints config summary, invokes `handler()`, prints result; supports `--dry-run` and `--force-new` flags
+- **`.env.example`** — committed example env file documenting every configurable variable with inline comments
+- **`tests/tools/test_post_tracker.py`** — 12 new unit tests covering all four `PostTracker` methods with moto-mocked DynamoDB
+
+### Changed
+- **`agent/main.py`** — added `logging.getLogger().setLevel(AgentConfig.log_level)` at handler start; fixes INFO-level logs being silently dropped by Lambda's default WARNING root-logger level
+- **`agent/config.py`** — default `ENABLED_PUBLISHERS` changed from `"blog"` to `"linkedin"`
+- **`agent/workflows/news_pipeline.py`** — integrated `PostTracker` into publish step: `format_content` → `create_pending` → `publish` → `mark_success / mark_dry_run / mark_error`; tracker is injected via constructor for testability
+- **`agent/tools/bedrock_summariser.py`** — `_call_bedrock()` dispatches directly to OpenAI when `LLM_PROVIDER=openai`; OpenAI model ID now uses `AgentConfig.openai_model_id` instead of hardcoded `"gpt-4.1-mini"`
+- **`agent/tools/post_generator.py`** — same LLM provider dispatch and model ID changes as `bedrock_summariser.py`
+- **`agent/publishers/linkedin.py`** — dry-run `PublishResult` now sets `dry_run=True` so `PostTracker` distinguishes it from a real success
+- **`infrastructure/stacks/agent_stack.py`** — added `posts_table`, `llm_provider`, `openai_model_id` parameters; added `POSTS_TABLE_NAME`, `LLM_PROVIDER`, `OPENAI_MODEL_ID` Lambda env vars; default `enabled_publishers` changed to `"linkedin"`
+- **`infrastructure/app.py`** — passes `posts_table` to agent stack; added `llm_provider` and `openai_model_id` CDK context params; default changed to `"linkedin"`
+- **`.gitignore`** — added `output/posts/` to prevent generated blog files from being committed
+
+### Total test count: 192 (all passing)
+
+---
+
 ## [0.10.1] — 2026-07-03
 
 ### Changed

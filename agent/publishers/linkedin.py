@@ -119,7 +119,9 @@ class LinkedInPublisher(BasePublisher):
                 "Formatted post:\n%s",
                 content,
             )
-            return PublishResult(platform=self.platform_name, success=True, post_id="dry-run")
+            return PublishResult(
+                platform=self.platform_name, success=True, post_id="dry-run", dry_run=True
+            )
 
         try:
             creds = self._get_credentials()
