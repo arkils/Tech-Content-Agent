@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # LinkedIn recommends posts between 150–300 words for optimal reach
 _MAX_CHARS = 3_000
 _LINKEDIN_API_URL = "https://api.linkedin.com/rest/posts"
-_LINKEDIN_API_VERSION = "202504"
+_LINKEDIN_API_VERSION = "202506"
 
 
 class LinkedInPublisher(BasePublisher):

@@ -182,6 +182,7 @@ class TestLinkedInPublisherPublish:
 
         _, call_kwargs = mock_post.call_args
         assert call_kwargs["headers"]["Authorization"] == "Bearer test-access-token"
+        assert call_kwargs["headers"]["LinkedIn-Version"] == "202506"
 
     def test_publish_returns_failure_on_http_error(self, ssm_client) -> None:
         mock_response = MagicMock()

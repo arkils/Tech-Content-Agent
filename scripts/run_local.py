@@ -77,6 +77,13 @@ def _load_env_file(path: Path) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+def _get_runtime_config() -> object:
+    """Return an AgentConfig instance after env variables have been applied."""
+    from agent.config import AgentConfig  # noqa: PLC0415
+
+    return AgentConfig()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the tech-news-agent pipeline locally.")
     parser.add_argument(
@@ -108,12 +115,12 @@ def main() -> None:
         print("--force-new: FORCE_NO_NEW_ARTICLES forced to true")
 
     # Late import — AgentConfig reads env vars at class definition time
-    from agent.config import AgentConfig  # noqa: PLC0415
+    config = _get_runtime_config()
     from agent.main import handler  # noqa: PLC0415
 
     # Configure logging for local console output
     logging.basicConfig(
-        level=AgentConfig.log_level,
+        level=config.log_level,
         format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
         datefmt="%H:%M:%S",
     )
@@ -121,15 +128,15 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("tech-news-agent — local run")
     print("=" * 60)
-    print(f"  AWS region      : {AgentConfig.aws_region}")
-    print(f"  LLM provider    : {AgentConfig.llm_provider}")
-    print(f"  Bedrock model   : {AgentConfig.bedrock_model_id}")
-    print(f"  OpenAI model    : {AgentConfig.openai_model_id}")
-    print(f"  Publishers      : {', '.join(AgentConfig.enabled_publishers)}")
-    print(f"  Enable posting  : {AgentConfig.enable_posting}")
-    print(f"  Articles table  : {AgentConfig.dynamodb_table_name}")
-    print(f"  Posts table     : {AgentConfig.posts_table_name}")
-    print(f"  Force new arts  : {AgentConfig.force_no_new_articles}")
+    print(f"  AWS region      : {config.aws_region}")
+    print(f"  LLM provider    : {config.llm_provider}")
+    print(f"  Bedrock model   : {config.bedrock_model_id}")
+    print(f"  OpenAI model    : {config.openai_model_id}")
+    print(f"  Publishers      : {', '.join(config.enabled_publishers)}")
+    print(f"  Enable posting  : {config.enable_posting}")
+    print(f"  Articles table  : {config.dynamodb_table_name}")
+    print(f"  Posts table     : {config.posts_table_name}")
+    print(f"  Force new arts  : {config.force_no_new_articles}")
     print("=" * 60 + "\n")
 
     result = handler(event={}, context=None)  # type: ignore[arg-type]

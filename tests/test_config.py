@@ -11,6 +11,16 @@ import pytest
 from agent.config import AgentConfig
 
 
+def test_runtime_config_exposes_boolean_force_new_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The local runner should resolve FORCE_NO_NEW_ARTICLES to a real boolean."""
+    monkeypatch.setenv("FORCE_NO_NEW_ARTICLES", "true")
+
+    from scripts.run_local import _get_runtime_config
+
+    config = _get_runtime_config()
+    assert config.force_no_new_articles is True
+
+
 class TestAgentConfig:
     """Tests for AgentConfig."""
 
