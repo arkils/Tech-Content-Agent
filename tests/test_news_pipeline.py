@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import boto3
@@ -184,7 +185,7 @@ class TestPipelineEarlyExitNoNewArticles:
                     "url": {"S": url},
                     "title": {"S": "Seen"},
                     "source": {"S": "Test"},
-                    "processed_at": {"S": "2026-07-01T00:00:00+00:00"},
+                    "processed_at": {"S": datetime.now(timezone.utc).isoformat()},
                     "ttl": {"N": "9999999999"},
                 },
             )
@@ -207,7 +208,7 @@ class TestPipelineEarlyExitNoNewArticles:
                     "url": {"S": url},
                     "title": {"S": "Seen"},
                     "source": {"S": "Test"},
-                    "processed_at": {"S": "2026-07-01T00:00:00+00:00"},
+                    "processed_at": {"S": datetime.now(timezone.utc).isoformat()},
                     "ttl": {"N": "9999999999"},
                 },
             )
@@ -229,7 +230,7 @@ class TestPipelineEarlyExitNoNewArticles:
                     "url": {"S": url},
                     "title": {"S": "Seen"},
                     "source": {"S": "Test"},
-                    "processed_at": {"S": "2026-07-01T00:00:00+00:00"},
+                    "processed_at": {"S": datetime.now(timezone.utc).isoformat()},
                     "ttl": {"N": "9999999999"},
                 },
             )

@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 
 _DYNAMODB_BATCH_WRITE_LIMIT = 25  # DynamoDB hard limit per batch_write_item call
 _DYNAMODB_BATCH_GET_LIMIT = 100   # DynamoDB hard limit per batch_get_item call
+_RECENT_SEEN_WINDOW_DAYS = 1
 
 
 class ArticleDeduplicator:
@@ -154,11 +155,14 @@ class ArticleDeduplicator:
 
     def _fetch_existing_urls(self, urls: list[str]) -> set[str]:
         """
-        Batch-fetch URLs from DynamoDB and return those that already exist.
+        Batch-fetch URLs from DynamoDB and return those that were seen recently.
 
-        Handles chunking for lists longer than the 100-key BatchGetItem limit.
+        Entries remain in the table for the full TTL retention window, but only
+        items newer than the recent-seen window are treated as duplicates for
+        the next scheduled run.
         """
         existing: set[str] = set()
+        cutoff = datetime.now(timezone.utc) - timedelta(days=_RECENT_SEEN_WINDOW_DAYS)
 
         for batch in _chunks(urls, _DYNAMODB_BATCH_GET_LIMIT):
             keys = [{"url": {"S": url}} for url in batch]
@@ -171,7 +175,16 @@ class ArticleDeduplicator:
                 self._config.dynamodb_table_name, []
             ):
                 url_val = item.get("url", {}).get("S", "")
-                if url_val:
+                processed_at = item.get("processed_at", {}).get("S", "")
+                if not url_val:
+                    continue
+                if not processed_at:
+                    continue
+                try:
+                    seen_at = datetime.fromisoformat(processed_at)
+                except ValueError:
+                    continue
+                if seen_at >= cutoff:
                     existing.add(url_val)
 
         return existing

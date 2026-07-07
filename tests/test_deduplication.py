@@ -8,7 +8,7 @@ DynamoDB is mocked with moto throughout.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
@@ -41,7 +41,7 @@ def _make_table(client: object) -> None:
     )
 
 
-def _seed_url(client: object, url: str) -> None:
+def _seed_url(client: object, url: str, processed_at: datetime | None = None) -> None:
     """Write a minimal seen-article record to the moto table."""
     client.put_item(
         TableName=AgentConfig.dynamodb_table_name,
@@ -49,7 +49,7 @@ def _seed_url(client: object, url: str) -> None:
             "url": {"S": url},
             "title": {"S": "Seen Article"},
             "source": {"S": "Some Source"},
-            "processed_at": {"S": datetime.now(timezone.utc).isoformat()},
+            "processed_at": {"S": (processed_at or datetime.now(timezone.utc)).isoformat()},
             "ttl": {"N": str(_ttl_timestamp(90))},
         },
     )
@@ -104,6 +104,18 @@ class TestFilterNew:
         result = dedup.filter_new([])
 
         assert result == []
+
+    def test_ignores_entries_older_than_one_day(self) -> None:
+        client = boto3.client("dynamodb", region_name="us-east-1")
+        _make_table(client)
+        old_seen_at = datetime.now(timezone.utc) - timedelta(days=2)
+        _seed_url(client, "https://example.com/article-1", processed_at=old_seen_at)
+        dedup = ArticleDeduplicator(dynamodb_client=client)
+        articles = [_make_article(1), _make_article(2)]
+
+        result = dedup.filter_new(articles)
+
+        assert len(result) == 2
 
     def test_preserves_article_order(self) -> None:
         client = boto3.client("dynamodb", region_name="us-east-1")
