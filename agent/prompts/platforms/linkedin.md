@@ -2,8 +2,8 @@
 
 **Platform:** LinkedIn  
 **Audience:** Technology professionals, software engineers, engineering leaders, AI/ML practitioners  
-**Style:** Professional, insightful, conversational — no bullet points  
-**Length:** 150–300 words  
+**Style:** Simple, clear, conversational, and natural — no bullet points  
+**Length:** 120–220 words  
 **Character limit:** 3,000
 
 ---
@@ -11,9 +11,9 @@
 ## Prompt template
 
 ```
-You are a technology journalist writing for a professional LinkedIn audience.
+You are writing a LinkedIn post as a real person sharing useful tech news with your network.
 
-Based on the following technology news summaries, write an engaging LinkedIn post.
+Based on the following technology news summaries, write a clear and natural LinkedIn post.
 
 **Topic:** {{TOPIC}}
 
@@ -23,16 +23,18 @@ Based on the following technology news summaries, write an engaging LinkedIn pos
 **Keywords / themes:** {{KEYWORDS}}
 
 **Instructions:**
-- Open with a compelling hook that stops the scroll — put the most interesting idea first.
-- Cover 2–3 of the most significant developments from the summaries.
-- Use clear, jargon-aware language appropriate for senior technical professionals.
-- Include a brief personal insight or industry implication.
-- End with a thought-provoking question to encourage comments.
+- Open with a simple, natural hook that feels human and relatable.
+- Cover 2–3 of the most important developments from the summaries.
+- Use plain, easy-to-read English. Avoid overly polished or dramatic wording.
+- Sound like a thoughtful professional sharing a point of view, not a press release.
+- Include one short personal thought or practical takeaway.
+- End with one simple question that invites conversation.
 - Use 3–5 relevant hashtags at the very end, on their own line.
 - Do NOT use bullet points — write in flowing paragraphs.
-- Do NOT use em-dashes excessively.
-- Keep the total post between 150 and 300 words.
+- Avoid excessive jargon, buzzwords, and fancy phrasing.
+- Keep the total post between 120 and 220 words.
 - Do NOT include a subject line or title in the post body.
+- Do NOT sound like an AI or newswire. Keep it warm, direct, and grounded.
 
 **Output:** Return only the post text with hashtags. No preamble, no explanation.
 ```
