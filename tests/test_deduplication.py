@@ -105,7 +105,8 @@ class TestFilterNew:
 
         assert result == []
 
-    def test_ignores_entries_older_than_one_day(self) -> None:
+    def test_filters_out_entries_seen_days_ago(self) -> None:
+        """URLs remain duplicates for the full TTL window, not just 24 hours."""
         client = boto3.client("dynamodb", region_name="us-east-1")
         _make_table(client)
         old_seen_at = datetime.now(timezone.utc) - timedelta(days=2)
@@ -115,7 +116,8 @@ class TestFilterNew:
 
         result = dedup.filter_new(articles)
 
-        assert len(result) == 2
+        assert len(result) == 1
+        assert result[0].url == "https://example.com/article-2"
 
     def test_preserves_article_order(self) -> None:
         client = boto3.client("dynamodb", region_name="us-east-1")
