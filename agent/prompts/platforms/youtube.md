@@ -36,6 +36,7 @@ Based on the following technology news summaries, write an engaging YouTube Comm
 - Do NOT use markdown headers in the post body — plain text only.
 - Emojis are welcome (2–4 total).
 - Target 300–500 words for the body (before sources).
+- Do NOT use em dashes (—). Use a comma or reword the sentence instead.
 
 **Output:** Return only the post text including sources. No preamble, no explanation.
 ```

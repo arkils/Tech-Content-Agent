@@ -39,6 +39,7 @@ Based on the following technology news summaries, write a well-structured blog p
 - Do NOT fabricate statistics, quotes, or features not present in the summaries.
 - Target 600–1,000 words for the body (excluding front-matter and sources).
 - Tone: professional and analytical. Avoid sensationalism.
+- Do NOT use em dashes (—). Use a comma, colon, or reword the sentence instead.
 
 **Output:** Return only the Markdown body (no front-matter). No preamble, no explanation.
 ```

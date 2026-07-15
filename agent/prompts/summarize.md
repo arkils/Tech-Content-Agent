@@ -17,6 +17,10 @@ Given the following technology news articles, produce a concise, factual summary
 - Note any business or industry implications.
 - Flag any articles that appear to be duplicate coverage of the same story.
 - Assign a relevance score (1–5) to each article based on technical significance.
+- **Topic focus:** Prioritise articles about AI, large language models, AI agents, machine learning,
+  developer tools, cloud platforms, and emerging software technologies. Assign lower relevance
+  scores (1–2) to articles primarily about cybersecurity, data breaches, malware, or vulnerabilities
+  unless they have significant AI or software-engineering implications.
 
 **Output format:**
 

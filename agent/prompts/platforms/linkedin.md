@@ -35,6 +35,7 @@ Based on the following technology news summaries, write a clear and natural Link
 - Keep the total post between 120 and 220 words.
 - Do NOT include a subject line or title in the post body.
 - Do NOT sound like an AI or newswire. Keep it warm, direct, and grounded.
+- Do NOT use em dashes (—). Use a comma, colon, or reword the sentence instead.
 
 **Output:** Return only the post text with hashtags. No preamble, no explanation.
 ```

@@ -32,6 +32,7 @@ Based on the following technology news summaries, write an engaging Instagram ca
 - Hashtag block: 15–25 relevant hashtags (mix broad and niche).
 - Total caption ≤ 2,200 characters.
 - Do NOT write a title. Start immediately with the hook.
+- Do NOT use em dashes (—). Use a comma or reword the sentence instead.
 
 **Output:** Return only the caption text. No preamble, no explanation.
 ```

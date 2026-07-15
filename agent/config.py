@@ -67,11 +67,11 @@ def _get_bool_env(env_var: str, default: bool = False) -> bool:
 # These are well-known, stable tech news sources.
 # ---------------------------------------------------------------------------
 _DEFAULT_FEED_URLS = ",".join([
-    "https://feeds.arstechnica.com/arstechnica/technology-lab",
+    "https://venturebeat.com/category/ai/feed/",
+    "https://techcrunch.com/category/artificial-intelligence/feed/",
+    "https://aws.amazon.com/blogs/machine-learning/feed/",
     "https://www.theverge.com/rss/index.xml",
-    "https://techcrunch.com/feed/",
-    "https://aws.amazon.com/blogs/aws/feed/",
-    "https://news.ycombinator.com/rss",
+    "https://feeds.arstechnica.com/arstechnica/technology-lab",
 ])
 
 
