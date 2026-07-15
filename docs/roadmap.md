@@ -63,7 +63,32 @@
 - [x] **`.env.example`** — committed template documenting every env var with descriptions and defaults
 - [x] 192 unit tests — all passing
 
-## Phase 5 — Production hardening
+## Phase 4.2 — Deduplication window, prompt refinement & API maintenance ✅ Complete
+
+- [x] **Deduplication recent-seen window** — `ArticleDeduplicator._fetch_existing_urls()` now checks `processed_at` timestamp; only articles seen within the past 24 hours are treated as duplicates — older DynamoDB records are retained for history but no longer suppress re-fetching
+- [x] **LinkedIn API version bump** — `_LINKEDIN_API_VERSION` updated from `202504` to `202506` to stay aligned with LinkedIn's versioned REST API
+- [x] **Local runner refactor** — `scripts/run_local.py` instantiates `AgentConfig()` at runtime so env-var overrides (e.g. `--force-new`) are reflected correctly in the printed config summary
+- [x] **LinkedIn post prompt refinement** — `agent/prompts/platforms/linkedin.md` rewritten for tighter structure, stronger call-to-action, and clearer tone guidance
+- [x] 194 unit tests — all passing
+
+## Phase 5 — Human-in-the-Loop (HITL) Approval
+
+Full detail: [`docs/hitl-plan.md`](hitl-plan.md)
+
+- [ ] `ApprovalStatus` enum + `ApprovalRecord` dataclass in `agent/models/`
+- [ ] `AgentConfig` — `HITL_ENABLED`, `APPROVALS_TABLE_NAME`, FCM + secret SSM paths
+- [ ] `agent/tools/approval_store.py` — DynamoDB CRUD for approvals table (TTL 24 h)
+- [ ] `agent/tools/push_notifier.py` — FCM HTTP v1 push notifications via SSM-stored service account
+- [ ] `agent/workflows/news_pipeline.py` — HITL gate: when `HITL_ENABLED=true`, store approval record + push instead of publishing directly
+- [ ] `agent/handlers/approval_api.py` — Lambda Function URL handler (GET / approve / reject / device-token update)
+- [ ] `agent/handlers/publish_handler.py` — async-invoked Lambda that calls `LinkedInPublisher.publish()`
+- [ ] `infrastructure/stacks/approval_stack.py` — approvals DynamoDB table, two Lambdas, Function URLs, IAM grants
+- [ ] Infrastructure updates — `storage_stack.py`, `agent_stack.py`, `app.py`
+- [ ] Android app (`android/`) — Kotlin, FCM, Retrofit, review / edit / confirm / reject UI
+- [ ] Unit tests for all new backend components
+- [ ] `HITL_ENABLED=false` default — existing pipeline behaviour fully preserved
+
+## Phase 6 — Production hardening
 
 - [ ] Dead-letter queue (DLQ) for failed pipeline runs
 - [ ] CloudWatch alarms — pipeline failure, no articles fetched, publish errors
@@ -72,14 +97,14 @@
 - [ ] Cost optimisation review (Bedrock token usage, DynamoDB capacity)
 - [ ] Security review — IAM least privilege audit, VPC isolation assessment
 
-## Phase 6 — Observability & Operations
+## Phase 7 — Observability & Operations
 
 - [ ] CloudWatch dashboard — articles fetched, dedup rate, publish success/failure per platform
 - [ ] Automated rollback on CDK deployment failure
 - [ ] Runbook documentation (`docs/runbook.md`)
 - [ ] Load and chaos testing
 
-## Phase 7 — Additional platform integrations
+## Phase 8 — Additional platform integrations
 
 - [ ] `InstagramPublisher.publish()` — Meta Graph API two-step flow
 - [ ] `YouTubePublisher.publish()` — YouTube Data API v3 Community Posts

@@ -14,6 +14,34 @@ This project uses [semantic versioning](https://semver.org/) — pre-1.0 while i
 
 ---
 
+## [0.12.0] — 2026-07-07
+
+### Added
+- **`agent/tools/deduplication.py`** — `_RECENT_SEEN_WINDOW_DAYS = 1` constant; `_fetch_existing_urls()` now parses the `processed_at` ISO timestamp on each DynamoDB item and only treats articles seen **within the past day** as duplicates — older records remain in the table for the full TTL retention window but no longer block re-fetching
+
+### Changed
+- **`tests/test_deduplication.py`** — updated tests to stamp `processed_at` on mock DynamoDB items and cover the recent-seen cutoff boundary
+- **`tests/test_news_pipeline.py`** — updated pipeline integration tests to align with the new deduplication behaviour
+
+### Total test count: 194 (all passing)
+
+---
+
+## [0.11.2] — 2026-07-07
+
+### Changed
+- **`agent/prompts/platforms/linkedin.md`** — prompt rewritten for improved clarity and engagement; tighter structure, stronger call-to-action, and concise tone guidance
+
+---
+
+## [0.11.1] — 2026-07-06
+
+### Fixed
+- **`agent/publishers/linkedin.py`** — bumped `_LINKEDIN_API_VERSION` from `"202504"` to `"202506"` to stay current with LinkedIn's versioned REST API
+- **`scripts/run_local.py`** — refactored to instantiate `AgentConfig()` at runtime via a `_get_runtime_config()` helper rather than reading class-level attributes; fixes `--force-new` boolean flag not being reflected in the printed config summary
+
+---
+
 ## [0.11.0] — 2026-07-05
 
 ### Added

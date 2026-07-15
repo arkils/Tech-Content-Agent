@@ -35,7 +35,12 @@ Feed record schema (partition key `feed_url`):
 {"feed_url": "https://...", "name": "Ars Technica", "category": "general", "enabled": true}
 ```
 
-## Deduplication TTL
+## Deduplication TTL and recent-seen window
 
 Article records in `tech-news-agent-articles` expire after `AgentConfig.article_ttl_days`
 (default 90 days) via DynamoDB TTL — no manual cleanup needed.
+
+`ArticleDeduplicator` applies a **recent-seen window** of 1 day (`_RECENT_SEEN_WINDOW_DAYS`):
+only items whose `processed_at` timestamp falls within the past 24 hours are treated as
+duplicates.  Older records remain in DynamoDB for the full TTL but no longer suppress
+re-fetching — useful when the same article resurfaces after a day gap.

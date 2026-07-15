@@ -143,6 +143,35 @@ SYNC_RULES: list[dict] = [
             ".github/skills/project-qa/references/development-qa.md — test structure section",
         ],
     },
+    # ── HITL handlers ──────────────────────────────────────────────────────
+    {
+        "patterns": ["agent/handlers/"],
+        "exclude_suffixes": ["__init__.py"],
+        "docs": [
+            "docs/hitl-plan.md                    — update Phase 4 API route table if routes changed",
+            "docs/roadmap.md                      — tick off Phase 5 milestones",
+            "CHANGELOG.md",
+        ],
+    },
+    # ── Android app ────────────────────────────────────────────────────────
+    {
+        "patterns": ["android/"],
+        "exclude_suffixes": [".gitignore", ".example", ".xml", ".toml"],
+        "docs": [
+            "docs/hitl-plan.md                    — update Phase 6 Android structure if files/deps changed",
+            "docs/roadmap.md                      — tick off Phase 5 Android milestones",
+            "CHANGELOG.md",
+        ],
+        "note": "Ensure local.properties and google-services.json remain excluded from git.",
+    },
+    # ── HITL plan doc ──────────────────────────────────────────────────────
+    {
+        "patterns": ["docs/hitl-plan.md"],
+        "docs": [
+            "docs/roadmap.md                      — keep Phase 5 items in sync with hitl-plan.md",
+            ".github/instructions/android.instructions.md — update key reference pointers if sections renamed",
+        ],
+    },
     # ── Copilot customisation files ────────────────────────────────────────
     {
         "patterns": [
